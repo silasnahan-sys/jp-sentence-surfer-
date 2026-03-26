@@ -1,0 +1,14 @@
+# Build artifacts
+main.js
+main.js.map
+
+# Dependencies
+node_modules/
+
+# OS / editor artifacts
+.DS_Store
+*.swp
+*.swo
+
+# TypeScript compiled output (only relevant in dev)
+*.d.ts.map

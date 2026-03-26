@@ -1,0 +1,11 @@
+{
+  "id": "jp-sentence-surfer",
+  "name": "JP Sentence Surfer",
+  "version": "1.0.0",
+  "minAppVersion": "0.15.0",
+  "description": "Surf Japanese text at bunsetsu (phrase-chunk) level. Navigate, select, and cloze Japanese phrase chunks with one keypress. Works with YTranscript output.",
+  "author": "",
+  "authorUrl": "",
+  "fundingUrl": "",
+  "isDesktopOnly": false
+}
