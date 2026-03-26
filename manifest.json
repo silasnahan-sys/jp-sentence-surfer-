@@ -1,0 +1,10 @@
+{
+  "id": "jp-sentence-surfer",
+  "name": "JP Sentence Surfer",
+  "version": "0.1.0",
+  "minAppVersion": "1.1.0",
+  "description": "Mobile-first Japanese sentence navigator. Surf sentences, create clozes from bold text, and clean YTranscript YouTube transcripts.",
+  "author": "silasnahan-sys",
+  "authorUrl": "https://github.com/silasnahan-sys",
+  "isDesktopOnly": false
+}

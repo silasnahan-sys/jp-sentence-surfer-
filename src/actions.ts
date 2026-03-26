@@ -1,0 +1,205 @@
+import { Editor, Notice } from 'obsidian';
+import { JpSentenceSurferSettings } from './types';
+import {
+    parseSentences,
+    findSentenceAt,
+    findNextSentence,
+    findPrevSentence,
+    extractBoldSegments,
+    stripTimestamps,
+} from './jp-sentence-parser';
+import { buildClozeText } from './cloze';
+import { segmentYTranscript, isYTranscriptText, cleanYTranscriptText } from './ytranscript';
+import { BOLD_REGEX } from './constants';
+
+/**
+ * Get the cursor offset from an editor (as a single number in the full doc).
+ */
+function getCursorOffset(editor: Editor): number {
+    const cursor = editor.getCursor();
+    return editor.posToOffset(cursor);
+}
+
+/**
+ * Get the full editor content.
+ */
+function getContent(editor: Editor): string {
+    return editor.getValue();
+}
+
+/**
+ * Move cursor to start of next JP sentence.
+ */
+export function surfNextSentence(editor: Editor, settings: JpSentenceSurferSettings): void {
+    const content = getContent(editor);
+    const offset = getCursorOffset(editor);
+    const sentences = parseSentences(content, settings);
+    const next = findNextSentence(sentences, offset);
+    if (next) {
+        editor.setCursor(editor.offsetToPos(next.start));
+    } else {
+        new Notice('No next sentence found.');
+    }
+}
+
+/**
+ * Move cursor to start of previous JP sentence.
+ */
+export function surfPrevSentence(editor: Editor, settings: JpSentenceSurferSettings): void {
+    const content = getContent(editor);
+    const offset = getCursorOffset(editor);
+    const sentences = parseSentences(content, settings);
+    const prev = findPrevSentence(sentences, offset);
+    if (prev) {
+        editor.setCursor(editor.offsetToPos(prev.start));
+    } else {
+        new Notice('No previous sentence found.');
+    }
+}
+
+/**
+ * Select the current sentence (the one containing the cursor).
+ * If stripTimestampsOnSelect is true and the sentence contains timestamps,
+ * replace the raw sentence with clean text in the editor.
+ */
+export function surfSelectSentence(editor: Editor, settings: JpSentenceSurferSettings): void {
+    const content = getContent(editor);
+    const offset = getCursorOffset(editor);
+    const sentences = parseSentences(content, settings);
+    const sentence = findSentenceAt(sentences, offset);
+    if (!sentence) {
+        new Notice('No sentence found at cursor.');
+        return;
+    }
+
+    if (settings.stripTimestampsOnSelect && sentence.hasTimestamps) {
+        // Replace the raw sentence range with clean text
+        const cleanText = cleanYTranscriptText(sentence.raw);
+        editor.replaceRange(
+            cleanText,
+            editor.offsetToPos(sentence.start),
+            editor.offsetToPos(sentence.end)
+        );
+        // Now select the newly inserted clean text
+        editor.setSelection(
+            editor.offsetToPos(sentence.start),
+            editor.offsetToPos(sentence.start + cleanText.length)
+        );
+    } else {
+        editor.setSelection(
+            editor.offsetToPos(sentence.start),
+            editor.offsetToPos(sentence.end)
+        );
+    }
+}
+
+/**
+ * Select just the bold (**text**) portion within the current sentence.
+ */
+export function surfSelectBoldTarget(editor: Editor, settings: JpSentenceSurferSettings): void {
+    const content = getContent(editor);
+    const offset = getCursorOffset(editor);
+    const sentences = parseSentences(content, settings);
+    const sentence = findSentenceAt(sentences, offset);
+    if (!sentence) {
+        new Notice('No sentence found at cursor.');
+        return;
+    }
+    if (!sentence.hasBold) {
+        new Notice('No bold text in current sentence.');
+        return;
+    }
+    // Select first bold segment
+    const seg = sentence.boldSegments[0];
+    const boldStart = sentence.start + seg.startInSentence;
+    const boldEnd = sentence.start + seg.endInSentence;
+    editor.setSelection(
+        editor.offsetToPos(boldStart),
+        editor.offsetToPos(boldEnd)
+    );
+}
+
+/**
+ * Jump to next bold boundary marker in the document.
+ */
+export function surfJumpNextBold(editor: Editor): void {
+    const content = getContent(editor);
+    const offset = getCursorOffset(editor);
+    const regex = new RegExp(BOLD_REGEX.source, 'g');
+    let match: RegExpExecArray | null;
+    while ((match = regex.exec(content)) !== null) {
+        if (match.index > offset) {
+            editor.setCursor(editor.offsetToPos(match.index));
+            return;
+        }
+    }
+    new Notice('No next bold marker found.');
+}
+
+/**
+ * Save the current sentence (or selection) as a cloze card.
+ * Copies the cloze text to the clipboard.
+ */
+export async function surfSaveCloze(editor: Editor, settings: JpSentenceSurferSettings): Promise<void> {
+    const selection = editor.getSelection();
+    if (selection && selection.trim()) {
+        // Use the current selection
+        const boldSegments = extractBoldSegments(selection);
+        const sentence = {
+            raw: selection,
+            clean: stripTimestamps(selection),
+            start: 0,
+            end: selection.length,
+            hasBold: boldSegments.length > 0,
+            boldSegments,
+            hasTimestamps: false,
+        };
+        const cloze = buildClozeText(sentence, settings.clozeFormat);
+        await navigator.clipboard.writeText(cloze);
+        new Notice(`Cloze copied: ${cloze}`);
+        return;
+    }
+
+    // Use current sentence
+    const content = getContent(editor);
+    const offset = getCursorOffset(editor);
+    const sentences = parseSentences(content, settings);
+    const sentence = findSentenceAt(sentences, offset);
+    if (!sentence) {
+        new Notice('No sentence found at cursor.');
+        return;
+    }
+    const cloze = buildClozeText(sentence, settings.clozeFormat);
+    await navigator.clipboard.writeText(cloze);
+    new Notice(`Cloze copied: ${cloze}`);
+}
+
+/**
+ * Segment the current note's YTranscript content:
+ * stitch fragments, add sentence boundaries, clean timestamps.
+ */
+export function surfSegmentYTranscript(editor: Editor): void {
+    const content = getContent(editor);
+    if (!isYTranscriptText(content)) {
+        new Notice('This note does not appear to contain YTranscript content.');
+        return;
+    }
+    const segmented = segmentYTranscript(content);
+    editor.setValue(segmented);
+    new Notice('YTranscript segmented successfully.');
+}
+
+/**
+ * Look up the selected text in jp-collocations plugin.
+ */
+export function surfLookupCollocations(
+    editor: Editor,
+    lookupFn: (term: string) => void
+): void {
+    const selection = editor.getSelection();
+    if (!selection || !selection.trim()) {
+        new Notice('Select text to look up in jp-collocations.');
+        return;
+    }
+    lookupFn(selection.trim());
+}
