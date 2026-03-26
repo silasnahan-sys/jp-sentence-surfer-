@@ -1,5 +1,10 @@
 import { YTranscriptLine } from './types';
-import { YTRANSCRIPT_TIMESTAMP_REGEX, YTRANSCRIPT_INLINE_REGEX, JP_TERMINAL_CHARS } from './constants';
+import {
+    YTRANSCRIPT_TIMESTAMP_REGEX,
+    YTRANSCRIPT_INLINE_REGEX,
+    YTRANSCRIPT_ANNOTATION_REGEX,
+    JP_TERMINAL_CHARS,
+} from './constants';
 
 /**
  * Detect whether the given text looks like a YTranscript output.
@@ -35,41 +40,29 @@ export function parseYTranscriptLines(text: string): YTranscriptLine[] {
 }
 
 /**
- * Stitch YTranscript lines into complete sentences.
- * Returns an array of clean JP sentences (timestamps stripped).
- * Fragments are joined until a JP sentence-ending punctuation is found.
+ * Strip all [MM:SS](url) timestamps and [笑い]-style annotations from a line.
  */
-export function stitchYTranscriptSentences(text: string): string[] {
-    const lines = parseYTranscriptLines(text);
-    const sentences: string[] = [];
-    let current = '';
-
-    for (const line of lines) {
-        current += line.text;
-        // Check if current accumulation ends with JP terminal punctuation
-        if (endsWithJpTerminal(current)) {
-            sentences.push(current.trim());
-            current = '';
-        }
-    }
-
-    // Flush remaining text
-    if (current.trim()) {
-        sentences.push(current.trim());
-    }
-
-    return sentences;
+export function stripLineMarkup(line: string): string {
+    return line
+        .replace(new RegExp(YTRANSCRIPT_INLINE_REGEX.source, 'g'), '')
+        .replace(new RegExp(YTRANSCRIPT_ANNOTATION_REGEX.source, 'g'), '')
+        .trim();
 }
 
 /**
- * Process a full YTranscript note:
- * - Stitch sentence fragments across timestamp lines
- * - Return the cleaned text with proper sentence boundaries
+ * Process a full YTranscript note for bunsetsu surfing:
+ * 1. Strip ALL [MM:SS](url) timestamps
+ * 2. Strip annotations [笑い] [音楽] [拍手]
+ * 3. Concatenate cleaned text lines with newline separators so whitespace
+ *    boundaries are preserved for the bunsetsu grouper
  */
 export function segmentYTranscript(text: string): string {
     if (!isYTranscriptText(text)) return text;
-    const sentences = stitchYTranscriptSentences(text);
-    return sentences.join('\n');
+    const lines = text.split('\n');
+    const cleaned = lines
+        .map(l => stripLineMarkup(l))
+        .filter(l => l.length > 0);
+    return cleaned.join('\n');
 }
 
 /**
@@ -83,7 +76,6 @@ function endsWithJpTerminal(text: string): boolean {
     const trimmed = text.trimEnd();
     if (!trimmed) return false;
     const last = trimmed[trimmed.length - 1];
-    // Allow closing brackets after terminal punctuation
     const closingBrackets = '」』）)';
     if (closingBrackets.includes(last)) {
         const beforeBracket = trimmed.slice(0, -1).trimEnd();
@@ -91,4 +83,28 @@ function endsWithJpTerminal(text: string): boolean {
         return JP_TERMINAL_CHARS.includes(beforeBracket[beforeBracket.length - 1]);
     }
     return JP_TERMINAL_CHARS.includes(last);
+}
+
+/**
+ * Stitch YTranscript lines into complete sentences (legacy helper, kept for
+ * compatibility with callers that expect this function).
+ */
+export function stitchYTranscriptSentences(text: string): string[] {
+    const lines = parseYTranscriptLines(text);
+    const sentences: string[] = [];
+    let current = '';
+
+    for (const line of lines) {
+        current += line.text;
+        if (endsWithJpTerminal(current)) {
+            sentences.push(current.trim());
+            current = '';
+        }
+    }
+
+    if (current.trim()) {
+        sentences.push(current.trim());
+    }
+
+    return sentences;
 }

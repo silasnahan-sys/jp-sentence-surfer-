@@ -4,7 +4,65 @@ import {
     BOLD_REGEX,
     YTRANSCRIPT_INLINE_REGEX,
 } from './constants';
-import { ParsedSentence, BoldSegment } from './types';
+import { ParsedSentence, BoldSegment, BunsetsuChunk } from './types';
+import { TinySegmenter } from './tiny-segmenter';
+import { groupBunsetsu } from './bunsetsu-grouper';
+
+/**
+ * Parse Japanese text into bunsetsu (文節) phrase chunks using TinySegmenter.
+ * This is the primary parser used by all surf commands.
+ */
+export function parseBunsetsu(text: string): BunsetsuChunk[] {
+    const segmenter = new TinySegmenter();
+    const tokens = segmenter.segment(text);
+    return groupBunsetsu(tokens);
+}
+
+/**
+ * Find the bunsetsu chunk containing the given cursor offset.
+ */
+export function findChunkAt(
+    chunks: BunsetsuChunk[],
+    offset: number
+): BunsetsuChunk | null {
+    for (const c of chunks) {
+        if (offset >= c.start && offset < c.end) {
+            return c;
+        }
+    }
+    return null;
+}
+
+/**
+ * Find the next bunsetsu chunk whose start is strictly after `offset`.
+ */
+export function findNextChunk(
+    chunks: BunsetsuChunk[],
+    offset: number
+): BunsetsuChunk | null {
+    for (const c of chunks) {
+        if (c.start > offset) {
+            return c;
+        }
+    }
+    return null;
+}
+
+/**
+ * Find the last bunsetsu chunk whose end is at or before `offset`.
+ */
+export function findPrevChunk(
+    chunks: BunsetsuChunk[],
+    offset: number
+): BunsetsuChunk | null {
+    let prev: BunsetsuChunk | null = null;
+    for (const c of chunks) {
+        if (c.end <= offset) {
+            prev = c;
+        }
+    }
+    return prev;
+}
 
 /**
  * Parse all sentences from a block of text.
