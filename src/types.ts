@@ -47,3 +47,9 @@ export interface YTranscriptLine {
     text: string;
     lineIndex: number;
 }
+
+export interface BunsetsuChunk {
+    text: string;
+    start: number;
+    end: number;
+}

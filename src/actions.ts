@@ -1,10 +1,10 @@
 import { Editor, Notice } from 'obsidian';
 import { JpSentenceSurferSettings } from './types';
 import {
-    parseSentences,
-    findSentenceAt,
-    findNextSentence,
-    findPrevSentence,
+    parseBunsetsu,
+    findChunkAt,
+    findNextChunk,
+    findPrevChunk,
     extractBoldSegments,
     stripTimestamps,
 } from './jp-sentence-parser';
@@ -28,91 +28,74 @@ function getContent(editor: Editor): string {
 }
 
 /**
- * Move cursor to start of next JP sentence.
+ * Move cursor to start of next bunsetsu chunk.
  */
 export function surfNextSentence(editor: Editor, settings: JpSentenceSurferSettings): void {
     const content = getContent(editor);
     const offset = getCursorOffset(editor);
-    const sentences = parseSentences(content, settings);
-    const next = findNextSentence(sentences, offset);
+    const chunks = parseBunsetsu(content);
+    const next = findNextChunk(chunks, offset);
     if (next) {
         editor.setCursor(editor.offsetToPos(next.start));
     } else {
-        new Notice('No next sentence found.');
+        new Notice('No next chunk found.');
     }
 }
 
 /**
- * Move cursor to start of previous JP sentence.
+ * Move cursor to start of previous bunsetsu chunk.
  */
 export function surfPrevSentence(editor: Editor, settings: JpSentenceSurferSettings): void {
     const content = getContent(editor);
     const offset = getCursorOffset(editor);
-    const sentences = parseSentences(content, settings);
-    const prev = findPrevSentence(sentences, offset);
+    const chunks = parseBunsetsu(content);
+    const prev = findPrevChunk(chunks, offset);
     if (prev) {
         editor.setCursor(editor.offsetToPos(prev.start));
     } else {
-        new Notice('No previous sentence found.');
+        new Notice('No previous chunk found.');
     }
 }
 
 /**
- * Select the current sentence (the one containing the cursor).
- * If stripTimestampsOnSelect is true and the sentence contains timestamps,
- * replace the raw sentence with clean text in the editor.
+ * Select the current bunsetsu chunk (the one containing the cursor).
  */
 export function surfSelectSentence(editor: Editor, settings: JpSentenceSurferSettings): void {
     const content = getContent(editor);
     const offset = getCursorOffset(editor);
-    const sentences = parseSentences(content, settings);
-    const sentence = findSentenceAt(sentences, offset);
-    if (!sentence) {
-        new Notice('No sentence found at cursor.');
+    const chunks = parseBunsetsu(content);
+    const chunk = findChunkAt(chunks, offset);
+    if (!chunk) {
+        new Notice('No chunk found at cursor.');
         return;
     }
-
-    if (settings.stripTimestampsOnSelect && sentence.hasTimestamps) {
-        // Replace the raw sentence range with clean text
-        const cleanText = cleanYTranscriptText(sentence.raw);
-        editor.replaceRange(
-            cleanText,
-            editor.offsetToPos(sentence.start),
-            editor.offsetToPos(sentence.end)
-        );
-        // Now select the newly inserted clean text
-        editor.setSelection(
-            editor.offsetToPos(sentence.start),
-            editor.offsetToPos(sentence.start + cleanText.length)
-        );
-    } else {
-        editor.setSelection(
-            editor.offsetToPos(sentence.start),
-            editor.offsetToPos(sentence.end)
-        );
-    }
+    editor.setSelection(
+        editor.offsetToPos(chunk.start),
+        editor.offsetToPos(chunk.end)
+    );
 }
 
 /**
- * Select just the bold (**text**) portion within the current sentence.
+ * Select just the bold (**text**) portion within the current bunsetsu chunk.
  */
 export function surfSelectBoldTarget(editor: Editor, settings: JpSentenceSurferSettings): void {
     const content = getContent(editor);
     const offset = getCursorOffset(editor);
-    const sentences = parseSentences(content, settings);
-    const sentence = findSentenceAt(sentences, offset);
-    if (!sentence) {
-        new Notice('No sentence found at cursor.');
+    const chunks = parseBunsetsu(content);
+    const chunk = findChunkAt(chunks, offset);
+    if (!chunk) {
+        new Notice('No chunk found at cursor.');
         return;
     }
-    if (!sentence.hasBold) {
-        new Notice('No bold text in current sentence.');
+    const boldSegs = extractBoldSegments(chunk.text);
+    if (boldSegs.length === 0) {
+        new Notice('No bold text in current chunk.');
         return;
     }
     // Select first bold segment
-    const seg = sentence.boldSegments[0];
-    const boldStart = sentence.start + seg.startInSentence;
-    const boldEnd = sentence.start + seg.endInSentence;
+    const seg = boldSegs[0];
+    const boldStart = chunk.start + seg.startInSentence;
+    const boldEnd = chunk.start + seg.endInSentence;
     editor.setSelection(
         editor.offsetToPos(boldStart),
         editor.offsetToPos(boldEnd)
@@ -137,7 +120,7 @@ export function surfJumpNextBold(editor: Editor): void {
 }
 
 /**
- * Save the current sentence (or selection) as a cloze card.
+ * Save the current bunsetsu chunk (or selection) as a cloze card.
  * Copies the cloze text to the clipboard.
  */
 export async function surfSaveCloze(editor: Editor, settings: JpSentenceSurferSettings): Promise<void> {
@@ -160,15 +143,25 @@ export async function surfSaveCloze(editor: Editor, settings: JpSentenceSurferSe
         return;
     }
 
-    // Use current sentence
+    // Use current bunsetsu chunk
     const content = getContent(editor);
     const offset = getCursorOffset(editor);
-    const sentences = parseSentences(content, settings);
-    const sentence = findSentenceAt(sentences, offset);
-    if (!sentence) {
-        new Notice('No sentence found at cursor.');
+    const chunks = parseBunsetsu(content);
+    const chunk = findChunkAt(chunks, offset);
+    if (!chunk) {
+        new Notice('No chunk found at cursor.');
         return;
     }
+    const boldSegments = extractBoldSegments(chunk.text);
+    const sentence = {
+        raw: chunk.text,
+        clean: chunk.text,
+        start: chunk.start,
+        end: chunk.end,
+        hasBold: boldSegments.length > 0,
+        boldSegments,
+        hasTimestamps: false,
+    };
     const cloze = buildClozeText(sentence, settings.clozeFormat);
     await navigator.clipboard.writeText(cloze);
     new Notice(`Cloze copied: ${cloze}`);
