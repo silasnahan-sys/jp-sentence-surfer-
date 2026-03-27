@@ -103,3 +103,65 @@ export const PARTICLE_PRECEDERS = new Set(['に', 'で', 'と', 'から', 'ま�
  * Closing bracket characters that may immediately follow a hard stop.
  */
 export const CLOSING_BRACKETS = new Set(['」', '』', '）', ')']);
+
+
+// ─── Collocation chunker constants ───────────────────────────────────────────
+
+/**
+ * Hiragana possessive particle の — the primary noun-phrase linker.
+ */
+export const NO_PARTICLE = 'の';
+
+/**
+ * Particles that introduce verb-phrase collocations (N+P+V patterns).
+ */
+export const VP_PARTICLES = new Set(['を', 'に', 'で', 'が', 'と', 'へ', 'から', 'まで']);
+
+/**
+ * Tokens that signal a conditional/quotative clause boundary.
+ * These close a collocation chunk and tag it as conditional/quotative.
+ */
+export const CONDITIONAL_TOKENS = new Set(['と', 'たら', 'ば', 'なら', 'ても']);
+
+/**
+ * Quotative tokens — 〜って言ったら、〜って、〜と言う patterns.
+ */
+export const QUOTATIVE_TOKENS = new Set(['って', 'という', 'と言う', 'と言ったら', 'って言ったら']);
+
+/**
+ * て-form endings that signal a te-chain (continuative/sequential connection).
+ */
+export const TE_FORM_ENDINGS = new Set(['て', 'で', 'ちゃって', 'じゃって', 'ちゃ', 'てから']);
+
+/**
+ * Adverbial (連用形) endings that are commonly used as adverbs.
+ */
+export const RENYOKEI_ENDINGS = new Set(['く', 'に', 'で', 'と', 'に', 'ながら', 'つつ']);
+
+/**
+ * Known compound expressions (fixed multi-morpheme expressions).
+ */
+export const COMPOUND_EXPRESSIONS = [
+    'なんでかって言ったら',
+    'そもそも',
+    'なんといっても',
+    'それにしても',
+    'というわけで',
+    'ということで',
+    'ということは',
+    'それはそうと',
+    'それはともかく',
+    'ということになると',
+    'というふうに',
+    'というように',
+];
+
+/**
+ * Relative clause ending patterns — verb/adj forms that modify a following noun.
+ * These indicate a 連体修飾節 (relative clause).
+ */
+export const RENTAI_ENDINGS = new Set([
+    'る', 'た', 'ている', 'てる', 'ていた', 'てた',
+    'ない', 'ている', 'ていない',
+    'い',   // i-adjective
+]);
