@@ -19,7 +19,7 @@ export class DictLookupModal extends Modal {
         contentEl.empty();
 
         // ── Search bar row ────────────────────────────────────────────────────
-        const searchRow = contentEl.createDiv({ cls: 'jp-dict-search-row' });
+        const searchRow = contentEl.createDiv({ cls: 'jp-dict-input-row' });
 
         const input = searchRow.createEl('input', {
             type: 'text',

@@ -52,8 +52,8 @@ export class DiscourseView extends ItemView {
         const container = root.createDiv({ cls: 'jp-discourse-view' });
 
         // ── Tab bar ──────────────────────────────────────────────────────────
-        const tabBar = container.createDiv({ cls: 'jp-discourse-tab-bar' });
-        const tabContent = container.createDiv({ cls: 'jp-discourse-tab-content' });
+        const tabBar = container.createDiv({ cls: 'jp-discourse-tabs' });
+        const tabContentWrapper = container.createDiv();
 
         const tabs: { label: string; key: string }[] = [
             { label: '検索', key: 'inspector' },
@@ -71,20 +71,20 @@ export class DiscourseView extends ItemView {
             });
             buttons.push(btn);
 
-            const panel = tabContent.createDiv({ cls: 'jp-discourse-panel' });
+            const panel = tabContentWrapper.createDiv({ cls: 'jp-discourse-tab-content' });
             panel.style.display = 'none';
             panels[tab.key] = panel;
 
             btn.addEventListener('click', () => {
-                for (const b of buttons) b.classList.remove('jp-discourse-tab-btn--active');
+                for (const b of buttons) b.classList.remove('active');
                 for (const p of Object.values(panels)) p.style.display = 'none';
-                btn.classList.add('jp-discourse-tab-btn--active');
+                btn.classList.add('active');
                 panel.style.display = '';
             });
         }
 
         // Show first tab by default
-        buttons[0].classList.add('jp-discourse-tab-btn--active');
+        buttons[0].classList.add('active');
         panels['inspector'].style.display = '';
 
         // ── Tab 1: Inspector ─────────────────────────────────────────────────
@@ -259,24 +259,24 @@ export class DiscourseView extends ItemView {
             const row = this.indexListEl.createDiv({ cls: 'jp-index-entry' });
 
             // Text preview
-            const preview = row.createDiv({ cls: 'jp-index-preview' });
+            const preview = row.createDiv({ cls: 'jp-index-entry-text' });
             preview.textContent = entry.text.slice(0, 60) + (entry.text.length > 60 ? '…' : '');
 
             // Marker color dots
-            const dots = row.createDiv({ cls: 'jp-index-dots' });
+            const dots = row.createDiv({ cls: 'jp-index-entry-meta' });
             if (entry.openingMarkers.length > 0) {
-                dots.createEl('span', { cls: 'jp-dot jp-dot--opening' });
+                dots.createEl('span', { cls: 'jp-marker-dot jp-marker-dot-opening' });
             }
             if (entry.closingMarkers.length > 0) {
-                dots.createEl('span', { cls: 'jp-dot jp-dot--closing' });
+                dots.createEl('span', { cls: 'jp-marker-dot jp-marker-dot-closing' });
             }
             if (entry.internalMarkers.length > 0) {
-                dots.createEl('span', { cls: 'jp-dot jp-dot--internal' });
+                dots.createEl('span', { cls: 'jp-marker-dot jp-marker-dot-internal' });
             }
 
             // Timestamp
             if (entry.timestamp) {
-                row.createDiv({ text: entry.timestamp, cls: 'jp-index-timestamp' });
+                dots.createEl('span', { text: entry.timestamp });
             }
 
             // Click → show in Inspector (switch to first tab)
@@ -302,7 +302,7 @@ export class DiscourseView extends ItemView {
         const updateToggleLabel = (): void => {
             const on = settings.showDiscourseOverlay ?? false;
             toggleBtn.textContent = `オーバーレイ: ${on ? 'ON' : 'OFF'}`;
-            toggleBtn.classList.toggle('jp-overlay-toggle--on', on);
+            toggleBtn.classList.toggle('active', on);
         };
         updateToggleLabel();
 
@@ -322,15 +322,15 @@ export class DiscourseView extends ItemView {
             { color: '#9e9e9e', label: '応答（Interactional）' },
         ];
         for (const item of legendItems) {
-            const row = legend.createDiv({ cls: 'jp-legend-row' });
-            const swatch = row.createEl('span', { cls: 'jp-legend-swatch' });
+            const row = legend.createDiv({ cls: 'jp-overlay-legend-item' });
+            const swatch = row.createEl('span', { cls: 'jp-overlay-swatch' });
             swatch.style.backgroundColor = item.color;
             row.appendText(item.label);
         }
 
         panel.createDiv({
             text: 'Live pattern detection is active when overlay is ON',
-            cls: 'jp-overlay-note',
+            cls: 'jp-overlay-info',
         });
     }
 }
