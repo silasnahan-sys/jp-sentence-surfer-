@@ -14,17 +14,39 @@ import {
 import { FloatingToolbar } from './ui/FloatingToolbar';
 import { SentenceHighlighter } from './ui/SentenceHighlighter';
 import { JP_COLLOCATIONS_PLUGIN_ID } from './constants';
+import { DiscourseView, DISCOURSE_VIEW_TYPE } from './ui/DiscourseView';
+import { DictLookupModal } from './ui/DictLookupView';
+import { DiscourseIndex } from './discourse/discourse-index';
+import { DictEngine } from './dictionary/dict-engine';
+import { GranularityLevel, GRANULARITY_LABELS } from './discourse/discourse-parser';
 
 export default class JpSentenceSurferPlugin extends Plugin {
     settings: JpSentenceSurferSettings;
     private toolbar: FloatingToolbar;
     private highlighter: SentenceHighlighter;
+    discourseIndex: DiscourseIndex;
+    dictEngine: DictEngine;
+    /** Raw persisted data, cached by loadSettings to avoid a second loadData() call */
+    private savedRaw: Record<string, any> = {};
 
     async onload(): Promise<void> {
         await this.loadSettings();
 
+        this.discourseIndex = new DiscourseIndex();
+        this.dictEngine = new DictEngine();
+
+        // Restore persisted discourse index using data already cached by loadSettings
+        if (this.savedRaw.discourseIndex) {
+            this.discourseIndex.fromJSON(this.savedRaw.discourseIndex);
+        }
+
         this.toolbar = new FloatingToolbar(this);
         this.highlighter = new SentenceHighlighter(this);
+
+        this.registerView(
+            DISCOURSE_VIEW_TYPE,
+            (leaf) => new DiscourseView(leaf, this, this.discourseIndex)
+        );
 
         this.addSettingTab(new JpSentenceSurferSettingTab(this.app, this));
 
@@ -109,10 +131,114 @@ export default class JpSentenceSurferPlugin extends Plugin {
             },
         });
 
+        // ─── Discourse commands ───────────────────────────────────────────────
+        this.addCommand({
+            id: 'discourse-inspector-toggle',
+            name: 'Toggle discourse inspector',
+            callback: async () => {
+                const existing = this.app.workspace.getLeavesOfType(DISCOURSE_VIEW_TYPE);
+                if (existing.length > 0) {
+                    this.app.workspace.revealLeaf(existing[0]);
+                } else {
+                    const leaf = this.app.workspace.getRightLeaf(false);
+                    if (leaf) {
+                        await leaf.setViewState({ type: DISCOURSE_VIEW_TYPE, active: true });
+                        this.app.workspace.revealLeaf(leaf);
+                    }
+                }
+            },
+        });
+
+        this.addCommand({
+            id: 'discourse-capture-chunk',
+            name: 'Capture discourse chunk',
+            editorCallback: (editor: Editor) => {
+                const selected = editor.getSelection();
+                const text = selected || editor.getLine(editor.getCursor().line);
+                if (!text.trim()) {
+                    new Notice('No text to capture.');
+                    return;
+                }
+                const activeFile = this.app.workspace.getActiveFile();
+                const level = this.settings.discourse.defaultGranularity as GranularityLevel;
+                this.discourseIndex.captureChunk(text.trim(), level, {
+                    filePath: activeFile?.path ?? '',
+                    offset: 0,
+                });
+                this.saveSettings();
+                new Notice(`Captured: ${text.trim().slice(0, 40)}…`);
+            },
+        });
+
+        this.addCommand({
+            id: 'discourse-index-browser',
+            name: 'Open discourse index browser',
+            callback: async () => {
+                const existing = this.app.workspace.getLeavesOfType(DISCOURSE_VIEW_TYPE);
+                let leaf = existing[0];
+                if (!leaf) {
+                    leaf = this.app.workspace.getRightLeaf(false)!;
+                    if (leaf) await leaf.setViewState({ type: DISCOURSE_VIEW_TYPE, active: true });
+                }
+                if (leaf) {
+                    this.app.workspace.revealLeaf(leaf);
+                    const view = leaf.view as DiscourseView;
+                    if (view && typeof (view as any).activeTab !== 'undefined') {
+                        (view as any).activeTab = 'index';
+                        (view as any).buildUI();
+                    }
+                }
+            },
+        });
+
+        this.addCommand({
+            id: 'discourse-cycle-level',
+            name: 'Cycle discourse granularity level',
+            callback: () => {
+                const current = this.settings.discourse.defaultGranularity as GranularityLevel;
+                const next = ((current % 7) + 1) as GranularityLevel;
+                this.settings.discourse.defaultGranularity = next;
+                this.saveSettings();
+                new Notice(`Discourse level: ${next} – ${GRANULARITY_LABELS[next]}`);
+            },
+        });
+
+        this.addCommand({
+            id: 'dict-lookup',
+            name: 'Dictionary lookup',
+            editorCallback: (editor: Editor) => {
+                const selected = editor.getSelection();
+                const view = this.app.workspace.getActiveViewOfType(MarkdownView);
+                const contextLine = view ? editor.getLine(editor.getCursor().line) : '';
+                new DictLookupModal(this.app, this, this.dictEngine, selected, contextLine).open();
+            },
+        });
+
         // Mount toolbar after workspace is ready
         this.app.workspace.onLayoutReady(() => {
             this.toolbar.mount();
             this.highlighter.start();
+
+            // Update discourse inspector when active leaf changes (debounced 200ms)
+            let leafChangeTimer: ReturnType<typeof setTimeout> | null = null;
+            this.registerEvent(
+                this.app.workspace.on('active-leaf-change', () => {
+                    if (leafChangeTimer !== null) clearTimeout(leafChangeTimer);
+                    leafChangeTimer = setTimeout(() => {
+                        leafChangeTimer = null;
+                        // Only update if the discourse panel is open
+                        const discourseLeaves = this.app.workspace.getLeavesOfType(DISCOURSE_VIEW_TYPE);
+                        if (discourseLeaves.length === 0) return;
+                        const view = this.app.workspace.getActiveViewOfType(MarkdownView);
+                        if (!view) return;
+                        const editor = view.editor;
+                        const line = editor.getLine(editor.getCursor().line);
+                        for (const leaf of discourseLeaves) {
+                            (leaf.view as DiscourseView).setText(line);
+                        }
+                    }, 200);
+                })
+            );
         });
     }
 
@@ -122,11 +248,20 @@ export default class JpSentenceSurferPlugin extends Plugin {
     }
 
     async loadSettings(): Promise<void> {
-        this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+        this.savedRaw = (await this.loadData()) ?? {};
+        this.settings = {
+            ...DEFAULT_SETTINGS,
+            ...this.savedRaw,
+            discourse: { ...DEFAULT_SETTINGS.discourse, ...(this.savedRaw.discourse ?? {}) },
+            dict: { ...DEFAULT_SETTINGS.dict, ...(this.savedRaw.dict ?? {}) },
+        };
     }
 
     async saveSettings(): Promise<void> {
-        await this.saveData(this.settings);
+        await this.saveData({
+            ...this.settings,
+            discourseIndex: this.discourseIndex?.toJSON(),
+        });
     }
 
     /** Re-mount toolbar after settings change */
