@@ -34,6 +34,14 @@ export class FloatingToolbar {
             { label: '▶', title: 'Next sentence', commandId: 'surf-next-sentence' },
         ];
 
+        // Discourse button (additive — no conflict with PR #4 collocation buttons)
+        buttons.push({ label: '談', title: '談話文法パネルを開く', commandId: 'discourse-open-panel' });
+
+        // Dictionary button (additive — shown based on settings)
+        if (this.plugin.settings.dictionary?.showDictInToolbar !== false) {
+            buttons.push({ label: '📖', title: '辞書検索を開く', commandId: 'dict-lookup' });
+        }
+
         for (const btn of buttons) {
             const el = document.createElement('button');
             el.classList.add('jp-surfer-toolbar-btn');
