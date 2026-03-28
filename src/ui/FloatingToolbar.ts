@@ -7,9 +7,11 @@ interface AppWithCommands {
     };
 }
 
+const GRANULARITY_LABELS = ['', 'Mor', 'Bun', 'Cla', 'Utt', 'Tur', 'Exc', 'Top'];
+
 /**
  * Floating toolbar for mobile sentence surfing.
- * Shows a bottom (or top) bar with: ◀ Prev | Select | Cloze | Next ▶
+ * Shows a bottom (or top) bar with: ◀ Prev | Select | Cloze | Next ▶ | ⟲ Gran | 📌 Cap | 🔍 Dict | 📚 Idx
  */
 export class FloatingToolbar {
     private plugin: JpSentenceSurferPlugin;
@@ -27,11 +29,18 @@ export class FloatingToolbar {
         toolbar.classList.add('jp-surfer-toolbar');
         toolbar.setAttribute('data-position', this.plugin.settings.toolbarPosition);
 
+        const level = this.plugin.state?.discourseGranularity ?? 4;
+        const granLabel = GRANULARITY_LABELS[level] ?? String(level);
+
         const buttons: { label: string; title: string; commandId: string }[] = [
             { label: '◀', title: 'Previous sentence', commandId: 'surf-prev-sentence' },
             { label: '✂', title: 'Select sentence', commandId: 'surf-select-sentence' },
             { label: '🃏', title: 'Save as cloze', commandId: 'surf-save-cloze' },
             { label: '▶', title: 'Next sentence', commandId: 'surf-next-sentence' },
+            { label: `⟲${granLabel}`, title: 'Cycle granularity', commandId: 'discourse-cycle-granularity' },
+            { label: '📌', title: 'Capture discourse chunk', commandId: 'discourse-capture-chunk' },
+            { label: '🔍', title: 'Dictionary lookup', commandId: 'dict-lookup' },
+            { label: '📚', title: 'Discourse index', commandId: 'discourse-open-index' },
         ];
 
         for (const btn of buttons) {
@@ -61,7 +70,6 @@ export class FloatingToolbar {
     }
 
     private runCommand(id: string): void {
-        // Use the Obsidian app to execute a command by its full plugin-prefixed ID
         const fullId = `jp-sentence-surfer:${id}`;
         (this.plugin.app as unknown as AppWithCommands).commands.executeCommandById(fullId);
     }

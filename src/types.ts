@@ -1,5 +1,21 @@
 // All interfaces and types for JP Sentence Surfer
 
+export interface DiscourseSettings {
+    defaultGranularity: number; // 1-7
+    enableOverlayByDefault: boolean;
+    categoryColors: Record<string, string>; // A-H → CSS color
+    autoCaptureOnNavigation: boolean;
+    coOccurrenceDepth: number; // sentences of context
+}
+
+export interface DictionarySettings {
+    dictFolderPath: string;
+    loadedDictionaries: Record<string, boolean>; // name → enabled
+    defaultSearchMode: 'exact' | 'prefix' | 'substring';
+    autoLookupOnSelection: boolean;
+    saveToCollocationsTemplate: string;
+}
+
 export interface JpSentenceSurferSettings {
     /** Custom JP sentence regex pattern */
     sentenceRegex: string;
@@ -17,6 +33,10 @@ export interface JpSentenceSurferSettings {
     highlightCurrentSentence: boolean;
     /** Highlight color (CSS color string) */
     highlightColor: string;
+    /** Discourse analysis settings */
+    discourse: DiscourseSettings;
+    /** Dictionary lookup settings */
+    dictionary: DictionarySettings;
 }
 
 export interface SentenceBoundary {

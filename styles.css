@@ -123,3 +123,440 @@
         right: 24px;
     }
 }
+
+/* ═══════════════════════════════════════════════════════════════════
+   DISCOURSE VIEW
+   ═══════════════════════════════════════════════════════════════════ */
+
+.jp-surfer-discourse-view {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+    font-family: var(--font-interface);
+}
+
+.jp-surfer-discourse-tabs {
+    display: flex;
+    gap: 2px;
+    padding: 8px 8px 0;
+    border-bottom: 1px solid var(--background-modifier-border);
+    flex-shrink: 0;
+}
+
+.jp-surfer-discourse-tab {
+    padding: 8px 16px;
+    min-height: 44px;
+    border: none;
+    border-radius: 6px 6px 0 0;
+    background: var(--background-secondary);
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 14px;
+    transition: background 0.15s, color 0.15s;
+}
+
+.jp-surfer-discourse-tab:hover {
+    background: var(--background-modifier-hover);
+    color: var(--text-normal);
+}
+
+.jp-surfer-discourse-tab.active {
+    background: var(--background-primary);
+    color: var(--text-accent);
+    font-weight: 600;
+    border-bottom: 2px solid var(--text-accent);
+}
+
+.jp-surfer-discourse-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px;
+}
+
+.jp-surfer-discourse-panel {
+    display: none;
+}
+
+.jp-surfer-discourse-panel.active {
+    display: block;
+}
+
+/* Inspector panel */
+.jp-surfer-inspector-textarea {
+    width: 100%;
+    min-height: 120px;
+    padding: 8px;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 6px;
+    background: var(--background-secondary);
+    color: var(--text-normal);
+    font-family: var(--font-monospace);
+    resize: vertical;
+    box-sizing: border-box;
+}
+
+.jp-surfer-inspector-controls {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+    flex-wrap: wrap;
+}
+
+.jp-surfer-btn {
+    padding: 8px 16px;
+    min-height: 44px;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 6px;
+    background: var(--interactive-normal);
+    color: var(--text-normal);
+    cursor: pointer;
+    font-size: 14px;
+    transition: background 0.15s;
+}
+
+.jp-surfer-btn:hover {
+    background: var(--interactive-hover);
+}
+
+.jp-surfer-btn-primary {
+    background: var(--interactive-accent);
+    color: var(--text-on-accent);
+    border-color: var(--interactive-accent);
+}
+
+.jp-surfer-btn-primary:hover {
+    background: var(--interactive-accent-hover);
+}
+
+.jp-surfer-analysis-result {
+    margin-top: 12px;
+    padding: 10px;
+    background: var(--background-secondary);
+    border-radius: 6px;
+    line-height: 1.8;
+    word-break: break-all;
+}
+
+/* Discourse marker badges */
+.jp-surfer-marker-badge {
+    display: inline-block;
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 600;
+    margin: 0 1px;
+    cursor: default;
+    vertical-align: middle;
+    position: relative;
+}
+
+.jp-surfer-marker-badge[data-category="A"] { background: #e57373; color: #fff; }
+.jp-surfer-marker-badge[data-category="B"] { background: #ff9800; color: #fff; }
+.jp-surfer-marker-badge[data-category="C"] { background: #fdd835; color: #333; }
+.jp-surfer-marker-badge[data-category="D"] { background: #66bb6a; color: #fff; }
+.jp-surfer-marker-badge[data-category="E"] { background: #26c6da; color: #fff; }
+.jp-surfer-marker-badge[data-category="F"] { background: #42a5f5; color: #fff; }
+.jp-surfer-marker-badge[data-category="G"] { background: #7e57c2; color: #fff; }
+.jp-surfer-marker-badge[data-category="H"] { background: #ec407a; color: #fff; }
+
+.jp-surfer-marker-tooltip {
+    display: none;
+    position: absolute;
+    bottom: calc(100% + 4px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--background-primary);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 4px;
+    padding: 4px 8px;
+    font-size: 11px;
+    white-space: nowrap;
+    z-index: 100;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    pointer-events: none;
+}
+
+.jp-surfer-marker-badge:hover .jp-surfer-marker-tooltip {
+    display: block;
+}
+
+/* Index panel */
+.jp-surfer-index-filters {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+}
+
+.jp-surfer-filter-select,
+.jp-surfer-filter-input {
+    padding: 6px 10px;
+    min-height: 44px;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 6px;
+    background: var(--background-secondary);
+    color: var(--text-normal);
+    font-size: 14px;
+    flex: 1;
+    min-width: 120px;
+}
+
+.jp-surfer-chunk-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.jp-surfer-chunk-card {
+    padding: 10px 12px;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 8px;
+    background: var(--background-secondary);
+    cursor: pointer;
+    transition: background 0.1s;
+}
+
+.jp-surfer-chunk-card:hover {
+    background: var(--background-modifier-hover);
+}
+
+.jp-surfer-chunk-text {
+    font-size: 14px;
+    color: var(--text-normal);
+    margin-bottom: 4px;
+    word-break: break-all;
+}
+
+.jp-surfer-chunk-meta {
+    font-size: 11px;
+    color: var(--text-muted);
+}
+
+/* Overlay panel */
+.jp-surfer-overlay-grid {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 8px 12px;
+    align-items: center;
+}
+
+.jp-surfer-overlay-toggle {
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+}
+
+.jp-surfer-overlay-label {
+    font-size: 14px;
+    color: var(--text-normal);
+}
+
+.jp-surfer-overlay-count {
+    font-size: 13px;
+    color: var(--text-muted);
+    font-variant-numeric: tabular-nums;
+}
+
+.jp-surfer-stats-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 16px;
+    font-size: 13px;
+}
+
+.jp-surfer-stats-table th,
+.jp-surfer-stats-table td {
+    padding: 6px 10px;
+    text-align: left;
+    border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.jp-surfer-stats-table th {
+    color: var(--text-muted);
+    font-weight: 600;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   DICTIONARY MODAL
+   ═══════════════════════════════════════════════════════════════════ */
+
+.jp-surfer-dict-modal .modal-content {
+    padding: 0;
+}
+
+.jp-surfer-dict-modal {
+    max-width: 680px;
+    width: 95vw;
+}
+
+.jp-surfer-dict-search-bar {
+    display: flex;
+    gap: 8px;
+    padding: 12px;
+    border-bottom: 1px solid var(--background-modifier-border);
+    flex-wrap: wrap;
+}
+
+.jp-surfer-dict-search {
+    flex: 1;
+    min-width: 180px;
+    padding: 8px 12px;
+    min-height: 44px;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 6px;
+    background: var(--background-secondary);
+    color: var(--text-normal);
+    font-size: 18px;
+}
+
+.jp-surfer-dict-mode {
+    padding: 8px 10px;
+    min-height: 44px;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 6px;
+    background: var(--background-secondary);
+    color: var(--text-normal);
+    font-size: 14px;
+}
+
+.jp-surfer-dict-search-btn {
+    padding: 8px 18px;
+    min-height: 44px;
+    border: none;
+    border-radius: 6px;
+    background: var(--interactive-accent);
+    color: var(--text-on-accent);
+    cursor: pointer;
+    font-size: 15px;
+    font-weight: 600;
+    transition: background 0.15s;
+}
+
+.jp-surfer-dict-search-btn:hover {
+    background: var(--interactive-accent-hover);
+}
+
+.jp-surfer-dict-results {
+    padding: 12px;
+    max-height: 60vh;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.jp-surfer-dict-result-card {
+    padding: 12px 14px;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 8px;
+    background: var(--background-secondary);
+}
+
+.jp-surfer-dict-headword {
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--text-normal);
+    margin-bottom: 2px;
+}
+
+.jp-surfer-dict-reading {
+    font-size: 15px;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+}
+
+.jp-surfer-dict-tags {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+    margin-bottom: 8px;
+}
+
+.jp-surfer-dict-tag {
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 11px;
+    background: var(--background-modifier-border);
+    color: var(--text-muted);
+}
+
+.jp-surfer-dict-definitions ol {
+    margin: 0;
+    padding-left: 20px;
+    font-size: 14px;
+    color: var(--text-normal);
+}
+
+.jp-surfer-dict-definitions li {
+    margin-bottom: 4px;
+    line-height: 1.5;
+}
+
+.jp-surfer-dict-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+    flex-wrap: wrap;
+}
+
+.jp-surfer-dict-btn {
+    padding: 6px 14px;
+    min-height: 44px;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 6px;
+    background: var(--interactive-normal);
+    color: var(--text-normal);
+    cursor: pointer;
+    font-size: 13px;
+    transition: background 0.15s;
+}
+
+.jp-surfer-dict-btn:hover {
+    background: var(--interactive-hover);
+}
+
+.jp-surfer-dict-no-results {
+    text-align: center;
+    padding: 24px;
+    color: var(--text-muted);
+    font-size: 15px;
+}
+
+/* ─── Dark mode tweaks ───────────────────────────────────────────── */
+.theme-dark .jp-surfer-marker-badge[data-category="C"] {
+    color: #222;
+}
+
+/* ─── Mobile touch targets ───────────────────────────────────────── */
+@media (max-width: 768px) {
+    .jp-surfer-discourse-tab {
+        min-height: 48px;
+        padding: 10px 12px;
+        font-size: 15px;
+    }
+
+    .jp-surfer-btn,
+    .jp-surfer-dict-btn,
+    .jp-surfer-dict-search-btn {
+        min-height: 48px;
+        font-size: 15px;
+    }
+
+    .jp-surfer-dict-search {
+        font-size: 20px;
+        min-height: 52px;
+    }
+
+    .jp-surfer-dict-headword {
+        font-size: 28px;
+    }
+
+    .jp-surfer-chunk-card {
+        padding: 12px 14px;
+    }
+
+    .jp-surfer-inspector-textarea {
+        min-height: 150px;
+    }
+}
