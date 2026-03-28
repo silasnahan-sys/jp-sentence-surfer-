@@ -560,3 +560,12 @@
         min-height: 150px;
     }
 }
+
+/* Additional classes */
+.jp-surfer-inspector-results {
+    margin-top: 12px;
+}
+
+.jp-surfer-overlay-grid-row {
+    display: contents;
+}

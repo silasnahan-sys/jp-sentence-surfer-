@@ -26,7 +26,7 @@ export class DictLookupView extends Modal {
         const { contentEl } = this;
         contentEl.empty();
 
-        const searchContainer = contentEl.createEl('div', { cls: 'jp-surfer-dict-search-container' });
+        const searchContainer = contentEl.createEl('div', { cls: 'jp-surfer-dict-search-bar' });
 
         const searchInput = searchContainer.createEl('input', {
             cls: 'jp-surfer-dict-search',
@@ -34,7 +34,7 @@ export class DictLookupView extends Modal {
         }) as HTMLInputElement;
 
         const modeSelect = searchContainer.createEl('select', {
-            cls: 'jp-surfer-dict-mode-select',
+            cls: 'jp-surfer-dict-mode',
         }) as HTMLSelectElement;
         for (const mode of ['exact', 'prefix', 'substring', 'deconjugated']) {
             modeSelect.createEl('option', { text: mode, attr: { value: mode } });
@@ -102,7 +102,7 @@ export class DictLookupView extends Modal {
             if (allTags.length > 0) {
                 const tagsEl = card.createEl('div', { cls: 'jp-surfer-dict-tags' });
                 for (const tag of allTags) {
-                    tagsEl.createEl('span', { cls: 'jp-surfer-dict-tag-badge', text: tag });
+                    tagsEl.createEl('span', { cls: 'jp-surfer-dict-tag', text: tag });
                 }
             }
 

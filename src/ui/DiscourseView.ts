@@ -88,21 +88,21 @@ export class DiscourseView extends ItemView {
 
     private renderInspector(container: HTMLElement): void {
         const textarea = container.createEl('textarea', {
-            cls: 'jp-surfer-inspector-input',
+            cls: 'jp-surfer-inspector-textarea',
             attr: { placeholder: 'Paste or enter Japanese text here...' },
         });
 
         const resultsEl = container.createEl('div', { cls: 'jp-surfer-inspector-results' });
 
-        const btnRow = container.createEl('div', { cls: 'jp-surfer-inspector-actions' });
+        const btnRow = container.createEl('div', { cls: 'jp-surfer-inspector-controls' });
 
         const analyzeBtn = btnRow.createEl('button', {
-            cls: 'jp-surfer-inspector-btn',
+            cls: 'jp-surfer-btn',
             text: 'Analyze',
         });
 
         const captureBtn = btnRow.createEl('button', {
-            cls: 'jp-surfer-inspector-btn',
+            cls: 'jp-surfer-btn',
             text: 'Capture',
         });
 
@@ -148,7 +148,7 @@ export class DiscourseView extends ItemView {
         const filterRow = container.createEl('div', { cls: 'jp-surfer-index-filters' });
 
         const categorySelect = filterRow.createEl('select', {
-            cls: 'jp-surfer-index-category-filter',
+            cls: 'jp-surfer-filter-select',
         }) as HTMLSelectElement;
         categorySelect.createEl('option', { text: 'All', attr: { value: '' } });
         for (const cat of Object.values(DiscourseCategory)) {
@@ -156,11 +156,11 @@ export class DiscourseView extends ItemView {
         }
 
         const sourceInput = filterRow.createEl('input', {
-            cls: 'jp-surfer-index-source-filter',
+            cls: 'jp-surfer-filter-input',
             attr: { type: 'text', placeholder: 'Filter by source...' },
         }) as HTMLInputElement;
 
-        const listEl = container.createEl('div', { cls: 'jp-surfer-index-list' });
+        const listEl = container.createEl('div', { cls: 'jp-surfer-chunk-list' });
 
         const renderList = (): void => {
             listEl.empty();
@@ -212,9 +212,9 @@ export class DiscourseView extends ItemView {
             }
         }
 
-        const togglesEl = container.createEl('div', { cls: 'jp-surfer-overlay-toggles' });
+        const togglesEl = container.createEl('div', { cls: 'jp-surfer-overlay-grid' });
         for (const cat of categories) {
-            const row = togglesEl.createEl('div', { cls: 'jp-surfer-overlay-row' });
+            const row = togglesEl.createEl('div', { cls: 'jp-surfer-overlay-grid-row' });
             const checkboxId = `jp-surfer-overlay-${cat}`;
             const checkbox = row.createEl('input', {
                 attr: { type: 'checkbox', id: checkboxId },
@@ -230,7 +230,7 @@ export class DiscourseView extends ItemView {
             });
         }
 
-        const table = container.createEl('table', { cls: 'jp-surfer-overlay-stats' });
+        const table = container.createEl('table', { cls: 'jp-surfer-stats-table' });
         const headerRow = table.createEl('thead').createEl('tr');
         headerRow.createEl('th', { text: 'Category' });
         headerRow.createEl('th', { text: 'Count' });

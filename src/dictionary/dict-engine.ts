@@ -119,7 +119,7 @@ export class DictEngine {
         if (query.endsWith('ない')) {
             const stem = query.slice(0, -2);
             candidates.add(stem + 'る');
-            candidates.add(stem + 'る');
+            candidates.add(stem + 'う');
         }
         if (query.endsWith('なかった')) {
             const stem = query.slice(0, -4);
