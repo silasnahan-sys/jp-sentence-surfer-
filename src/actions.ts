@@ -11,6 +11,13 @@ import {
 import { buildClozeText } from './cloze';
 import { segmentYTranscript, isYTranscriptText, cleanYTranscriptText } from './ytranscript';
 import { BOLD_REGEX } from './constants';
+import {
+    parseAtGranularity,
+    findUnitAt,
+    findNextUnit,
+    findPrevUnit,
+    DiscourseGranularity,
+} from './discourse/discourse-parser';
 
 /**
  * Get the cursor offset from an editor (as a single number in the full doc).
@@ -195,4 +202,64 @@ export function surfLookupCollocations(
         return;
     }
     lookupFn(selection.trim());
+}
+
+/**
+ * Move cursor to the next discourse unit at the given granularity level.
+ */
+export function surfDiscourseNext(
+    editor: Editor,
+    settings: JpSentenceSurferSettings,
+    level: number
+): void {
+    const content = getContent(editor);
+    const offset = getCursorOffset(editor);
+    const units = parseAtGranularity(content, level as DiscourseGranularity);
+    const next = findNextUnit(units, offset);
+    if (next) {
+        editor.setCursor(editor.offsetToPos(next.start));
+    } else {
+        new Notice('No next discourse unit found.');
+    }
+}
+
+/**
+ * Move cursor to the previous discourse unit at the given granularity level.
+ */
+export function surfDiscoursePrev(
+    editor: Editor,
+    settings: JpSentenceSurferSettings,
+    level: number
+): void {
+    const content = getContent(editor);
+    const offset = getCursorOffset(editor);
+    const units = parseAtGranularity(content, level as DiscourseGranularity);
+    const prev = findPrevUnit(units, offset);
+    if (prev) {
+        editor.setCursor(editor.offsetToPos(prev.start));
+    } else {
+        new Notice('No previous discourse unit found.');
+    }
+}
+
+/**
+ * Select the discourse unit at the cursor position for the given granularity level.
+ */
+export function surfDiscourseSelect(
+    editor: Editor,
+    settings: JpSentenceSurferSettings,
+    level: number
+): void {
+    const content = getContent(editor);
+    const offset = getCursorOffset(editor);
+    const units = parseAtGranularity(content, level as DiscourseGranularity);
+    const unit = findUnitAt(units, offset);
+    if (!unit) {
+        new Notice('No discourse unit found at cursor.');
+        return;
+    }
+    editor.setSelection(
+        editor.offsetToPos(unit.start),
+        editor.offsetToPos(unit.end)
+    );
 }

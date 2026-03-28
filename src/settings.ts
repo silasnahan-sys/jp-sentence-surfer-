@@ -12,6 +12,29 @@ export const DEFAULT_SETTINGS: JpSentenceSurferSettings = {
     toolbarPosition: 'bottom',
     highlightCurrentSentence: true,
     highlightColor: 'rgba(255, 208, 0, 0.15)',
+    discourse: {
+        defaultGranularity: 4,
+        enableOverlayByDefault: false,
+        categoryColors: {
+            A: '#e57373',
+            B: '#ff9800',
+            C: '#fdd835',
+            D: '#66bb6a',
+            E: '#26c6da',
+            F: '#42a5f5',
+            G: '#7e57c2',
+            H: '#ec407a',
+        },
+        autoCaptureOnNavigation: false,
+        coOccurrenceDepth: 2,
+    },
+    dictionary: {
+        dictFolderPath: 'dictionaries',
+        loadedDictionaries: {},
+        defaultSearchMode: 'prefix',
+        autoLookupOnSelection: false,
+        saveToCollocationsTemplate: '{{expression}} [{{reading}}]: {{definition}}',
+    },
 };
 
 export class JpSentenceSurferSettingTab extends PluginSettingTab {
@@ -126,6 +149,105 @@ export class JpSentenceSurferSettingTab extends PluginSettingTab {
                     .setValue(this.plugin.settings.highlightColor)
                     .onChange(async (value) => {
                         this.plugin.settings.highlightColor = value || 'rgba(255, 208, 0, 0.15)';
+                        await this.plugin.saveSettings();
+                    })
+            );
+
+        // ── Discourse Settings ────────────────────────────────────────────────
+        containerEl.createEl('h3', { text: 'Discourse Analysis' });
+
+        new Setting(containerEl)
+            .setName('Default granularity level')
+            .setDesc('Default discourse unit level (1=morpheme … 7=topic segment).')
+            .addSlider(slider =>
+                slider
+                    .setLimits(1, 7, 1)
+                    .setValue(this.plugin.settings.discourse.defaultGranularity)
+                    .setDynamicTooltip()
+                    .onChange(async (value) => {
+                        this.plugin.settings.discourse.defaultGranularity = value;
+                        await this.plugin.saveSettings();
+                    })
+            );
+
+        new Setting(containerEl)
+            .setName('Enable overlay by default')
+            .setDesc('Show discourse marker overlay when opening notes.')
+            .addToggle(toggle =>
+                toggle
+                    .setValue(this.plugin.settings.discourse.enableOverlayByDefault)
+                    .onChange(async (value) => {
+                        this.plugin.settings.discourse.enableOverlayByDefault = value;
+                        await this.plugin.saveSettings();
+                    })
+            );
+
+        new Setting(containerEl)
+            .setName('Auto-capture on navigation')
+            .setDesc('Automatically capture discourse chunks when navigating between sentences.')
+            .addToggle(toggle =>
+                toggle
+                    .setValue(this.plugin.settings.discourse.autoCaptureOnNavigation)
+                    .onChange(async (value) => {
+                        this.plugin.settings.discourse.autoCaptureOnNavigation = value;
+                        await this.plugin.saveSettings();
+                    })
+            );
+
+        new Setting(containerEl)
+            .setName('Co-occurrence context depth')
+            .setDesc('Number of sentences to consider when detecting co-occurring patterns.')
+            .addSlider(slider =>
+                slider
+                    .setLimits(1, 10, 1)
+                    .setValue(this.plugin.settings.discourse.coOccurrenceDepth)
+                    .setDynamicTooltip()
+                    .onChange(async (value) => {
+                        this.plugin.settings.discourse.coOccurrenceDepth = value;
+                        await this.plugin.saveSettings();
+                    })
+            );
+
+        // ── Dictionary Settings ───────────────────────────────────────────────
+        containerEl.createEl('h3', { text: 'Dictionary' });
+
+        new Setting(containerEl)
+            .setName('Dictionary folder path')
+            .setDesc('Vault-relative path to the folder containing Yomitan dictionary JSON files.')
+            .addText(text =>
+                text
+                    .setPlaceholder('dictionaries')
+                    .setValue(this.plugin.settings.dictionary.dictFolderPath)
+                    .onChange(async (value) => {
+                        this.plugin.settings.dictionary.dictFolderPath = value || 'dictionaries';
+                        await this.plugin.saveSettings();
+                    })
+            );
+
+        new Setting(containerEl)
+            .setName('Default search mode')
+            .setDesc('How dictionary searches are performed by default.')
+            .addDropdown(dropdown =>
+                dropdown
+                    .addOption('exact', 'Exact')
+                    .addOption('prefix', 'Prefix')
+                    .addOption('substring', 'Substring')
+                    .setValue(this.plugin.settings.dictionary.defaultSearchMode)
+                    .onChange(async (value: string) => {
+                        this.plugin.settings.dictionary.defaultSearchMode =
+                            value as 'exact' | 'prefix' | 'substring';
+                        await this.plugin.saveSettings();
+                    })
+            );
+
+        new Setting(containerEl)
+            .setName('Auto-lookup on selection')
+            .setDesc('Automatically open dictionary lookup when text is selected.')
+            .addToggle(toggle =>
+                toggle
+                    .setValue(this.plugin.settings.dictionary.autoLookupOnSelection)
+                    .onChange(async (value) => {
+                        this.plugin.settings.dictionary.autoLookupOnSelection = value;
                         await this.plugin.saveSettings();
                     })
             );
