@@ -32,6 +32,11 @@ export class FloatingToolbar {
             { label: '✂', title: 'Select sentence', commandId: 'surf-select-sentence' },
             { label: '🃏', title: 'Save as cloze', commandId: 'surf-save-cloze' },
             { label: '▶', title: 'Next sentence', commandId: 'surf-next-sentence' },
+            { label: '🔬', title: 'Discourse inspector', commandId: 'discourse-inspector-toggle' },
+            { label: '📸', title: 'Capture chunk', commandId: 'discourse-capture-chunk' },
+            { label: '📊', title: 'Index browser', commandId: 'discourse-index-browser' },
+            { label: '🔄', title: 'Cycle granularity', commandId: 'discourse-cycle-level' },
+            { label: '📖', title: 'Dictionary lookup', commandId: 'dict-lookup' },
         ];
 
         for (const btn of buttons) {
