@@ -1,5 +1,5 @@
 import { Plugin, Editor, MarkdownView, Notice } from 'obsidian';
-import { JpSentenceSurferSettings } from './types';
+import { JpSentenceSurferSettings, DISCOURSE_GRANULARITY_LEVELS } from './types';
 import { DEFAULT_SETTINGS, JpSentenceSurferSettingTab } from './settings';
 import {
     surfNextSentence,
@@ -13,12 +13,21 @@ import {
 } from './actions';
 import { FloatingToolbar } from './ui/FloatingToolbar';
 import { SentenceHighlighter } from './ui/SentenceHighlighter';
+import { DiscourseView, DISCOURSE_VIEW_TYPE } from './ui/DiscourseView';
+import { DictLookupModal } from './ui/DictLookupModal';
+import { DiscourseIndex } from './discourse/discourse-index';
+import { DictEngine } from './dictionary/dict-engine';
+import { ScrapeEngine } from './discourse/scrape-engine';
+import { parseAtGranularity, findUnitAt } from './discourse/discourse-parser';
 import { JP_COLLOCATIONS_PLUGIN_ID } from './constants';
 
 export default class JpSentenceSurferPlugin extends Plugin {
     settings: JpSentenceSurferSettings;
     private toolbar: FloatingToolbar;
     private highlighter: SentenceHighlighter;
+    discourseIndex: DiscourseIndex | null = null;
+    dictEngine: DictEngine | null = null;
+    scrapeEngine: ScrapeEngine | null = null;
 
     async onload(): Promise<void> {
         await this.loadSettings();
@@ -26,9 +35,26 @@ export default class JpSentenceSurferPlugin extends Plugin {
         this.toolbar = new FloatingToolbar(this);
         this.highlighter = new SentenceHighlighter(this);
 
+        // Initialize discourse index
+        this.discourseIndex = new DiscourseIndex(this.app, this.settings.discourseIndexPath);
+
+        // Initialize dictionary engine
+        this.dictEngine = new DictEngine(this.app, this.settings.dictionaryFolder || 'Dictionaries');
+
+        // Initialize scrape engine
+        this.scrapeEngine = new ScrapeEngine(
+            this.app,
+            this.settings.scrapeIndexPath,
+            this.settings.scrapeFolderPath,
+            this.settings.scrapeBatchSize,
+        );
+
         this.addSettingTab(new JpSentenceSurferSettingTab(this.app, this));
 
-        // Register all commands
+        // Register Discourse View
+        this.registerView(DISCOURSE_VIEW_TYPE, (leaf) => new DiscourseView(leaf, this));
+
+        // ── Core surf commands ─────────────────────────────────────────────────
         this.addCommand({
             id: 'surf-next-sentence',
             name: 'Next sentence',
@@ -90,7 +116,6 @@ export default class JpSentenceSurferPlugin extends Plugin {
             id: 'surf-lookup-collocations',
             name: 'Lookup in jp-collocations',
             editorCallback: (editor: Editor) => {
-                // Access installed plugins — Obsidian exposes these at runtime
                 const plugins = (this.app as any).plugins as
                     | { plugins: Record<string, { searchTerm?: (term: string) => void }> }
                     | undefined;
@@ -109,16 +134,282 @@ export default class JpSentenceSurferPlugin extends Plugin {
             },
         });
 
-        // Mount toolbar after workspace is ready
-        this.app.workspace.onLayoutReady(() => {
+        // ── Discourse grammar commands ─────────────────────────────────────────
+
+        this.addCommand({
+            id: 'discourse-surf-next',
+            name: '談話: 次の単位へ',
+            editorCallback: (editor: Editor) => {
+                const content = editor.getValue();
+                const offset = editor.posToOffset(editor.getCursor());
+                const units = parseAtGranularity(content, this.settings.discourseGranularity);
+                const next = units.find(u => u.start > offset);
+                if (next) {
+                    editor.setCursor(editor.offsetToPos(next.start));
+                } else {
+                    new Notice('次の談話単位が見つかりません。');
+                }
+            },
+        });
+
+        this.addCommand({
+            id: 'discourse-surf-prev',
+            name: '談話: 前の単位へ',
+            editorCallback: (editor: Editor) => {
+                const content = editor.getValue();
+                const offset = editor.posToOffset(editor.getCursor());
+                const units = parseAtGranularity(content, this.settings.discourseGranularity);
+                let prev: import('./types').DiscourseUnit | null = null;
+                for (const u of units) {
+                    if (u.end <= offset) prev = u;
+                }
+                if (prev) {
+                    editor.setCursor(editor.offsetToPos(prev.start));
+                } else {
+                    new Notice('前の談話単位が見つかりません。');
+                }
+            },
+        });
+
+        this.addCommand({
+            id: 'discourse-select-unit',
+            name: '談話: 現在の単位を選択',
+            editorCallback: (editor: Editor) => {
+                const content = editor.getValue();
+                const offset = editor.posToOffset(editor.getCursor());
+                const units = parseAtGranularity(content, this.settings.discourseGranularity);
+                const unit = findUnitAt(units, offset);
+                if (!unit) {
+                    new Notice('談話単位が見つかりません。');
+                    return;
+                }
+                editor.setSelection(
+                    editor.offsetToPos(unit.start),
+                    editor.offsetToPos(unit.end),
+                );
+            },
+        });
+
+        this.addCommand({
+            id: 'discourse-capture-chunk',
+            name: '談話: チャンクを保存',
+            editorCallback: async (editor: Editor) => {
+                const view = this.app.workspace.getActiveViewOfType(MarkdownView);
+                if (!view) return;
+
+                const content = editor.getValue();
+                const offset = editor.posToOffset(editor.getCursor());
+
+                // Try to get selected text first
+                const selection = editor.getSelection();
+                let unit;
+                if (selection && selection.trim()) {
+                    const selFrom = editor.posToOffset(editor.getCursor('from'));
+                    const selTo = editor.posToOffset(editor.getCursor('to'));
+                    unit = {
+                        text: selection,
+                        start: selFrom,
+                        end: selTo,
+                        granularity: this.settings.discourseGranularity,
+                    };
+                } else {
+                    const units = parseAtGranularity(content, this.settings.discourseGranularity);
+                    unit = findUnitAt(units, offset);
+                }
+
+                if (!unit) {
+                    new Notice('談話単位が見つかりません。');
+                    return;
+                }
+
+                // Try to get collocations from jp-collocations plugin
+                const plugins = (this.app as any).plugins as any;
+                const collPlugin = plugins?.plugins?.[JP_COLLOCATIONS_PLUGIN_ID];
+                const knownColls: string[] = [];
+                if (collPlugin && typeof collPlugin.getCollocations === 'function') {
+                    try {
+                        const colls = await collPlugin.getCollocations();
+                        if (Array.isArray(colls)) knownColls.push(...colls);
+                    } catch { /* ignore */ }
+                }
+
+                // Extract YT timestamp if present
+                const lineText = editor.getLine(editor.getCursor().line);
+                const tsMatch = lineText.match(/\[([\d:]+)\]/);
+                const timestamp = tsMatch ? tsMatch[1] : undefined;
+
+                const sourceFile = view.file?.path ?? 'unknown';
+                const { findCollocationsInText } = await import('./discourse/discourse-index');
+                const foundColls = findCollocationsInText(unit.text, knownColls);
+
+                const entry = await this.discourseIndex!.captureChunk(
+                    unit,
+                    sourceFile,
+                    content,
+                    this.settings.contextExpansionMode,
+                    this.settings.fixedContextChars,
+                    foundColls,
+                    timestamp,
+                );
+
+                // Push entry and discourse context to jp-collocations if available
+                if (collPlugin) {
+                    if (typeof collPlugin.addEntryFromSurfer === 'function') {
+                        try { collPlugin.addEntryFromSurfer(entry); } catch { /* ignore */ }
+                    }
+                    for (const collId of foundColls) {
+                        if (typeof collPlugin.addDiscourseContext === 'function') {
+                            try {
+                                collPlugin.addDiscourseContext(collId, {
+                                    chunkId: entry.id,
+                                    text: entry.text,
+                                    sourceFile: entry.sourceFile,
+                                });
+                            } catch { /* ignore */ }
+                        }
+                    }
+                }
+
+                // Refresh discourse view if open
+                const leaves = this.app.workspace.getLeavesOfType(DISCOURSE_VIEW_TYPE);
+                for (const leaf of leaves) {
+                    (leaf.view as DiscourseView).refresh(entry);
+                }
+
+                new Notice(`チャンクを保存しました: ${unit.text.slice(0, 30)}…`);
+            },
+        });
+
+        this.addCommand({
+            id: 'discourse-show-index',
+            name: '談話: 索引を開く',
+            callback: async () => {
+                await this.activateDiscourseView();
+            },
+        });
+
+        this.addCommand({
+            id: 'discourse-cycle-granularity',
+            name: '談話: 粒度を切り替え',
+            callback: async () => {
+                const levels = DISCOURSE_GRANULARITY_LEVELS;
+                const current = this.settings.discourseGranularity;
+                const idx = levels.indexOf(current);
+                const next = levels[(idx + 1) % levels.length];
+                this.settings.discourseGranularity = next;
+                await this.saveSettings();
+                this.toolbar.updateGranularityLabel();
+                new Notice(`談話粒度: ${next}`);
+            },
+        });
+
+        this.addCommand({
+            id: 'discourse-toggle-overlay',
+            name: '談話: オーバーレイ切替',
+            callback: async () => {
+                this.settings.showDiscourseOverlay = !this.settings.showDiscourseOverlay;
+                await this.saveSettings();
+                const state = this.settings.showDiscourseOverlay ? 'オン' : 'オフ';
+                new Notice(`談話オーバーレイ: ${state}`);
+            },
+        });
+
+        // ── Dictionary commands ────────────────────────────────────────────────
+
+        this.addCommand({
+            id: 'dict-lookup',
+            name: '辞書: 検索',
+            editorCallback: async (editor: Editor) => {
+                if (!this.settings.enableDictLookup) {
+                    new Notice('辞書機能が無効です。設定から有効にしてください。');
+                    return;
+                }
+                const selection = editor.getSelection();
+                const query = selection?.trim() ?? '';
+                const modal = new DictLookupModal(this.app, this, this.dictEngine!, query);
+                modal.open();
+            },
+        });
+
+        this.addCommand({
+            id: 'dict-load',
+            name: '辞書: 辞書を読み込む',
+            callback: async () => {
+                await this.loadDictionaries();
+            },
+        });
+
+        // ── Scrape engine commands ─────────────────────────────────────────────
+
+        this.addCommand({
+            id: 'discourse-scrape-vault',
+            name: '談話: Vault全体をスクレープ',
+            callback: async () => {
+                if (!this.settings.enableScrapeIndex) {
+                    new Notice('スクレープ索引が無効です。設定から有効にしてください。');
+                    return;
+                }
+                if (!this.scrapeEngine) return;
+                new Notice('スクレープを開始します...');
+                this.scrapeEngine.setProgressCallback((scanned, total) => {
+                    // Progress updates are silent to avoid spamming notices
+                });
+                const result = await this.scrapeEngine.runFullScrape();
+                new Notice(
+                    `スクレープ完了: ${result.filesScanned}ファイル, ` +
+                    `${result.occurrencesFound}用例, ` +
+                    `${result.constellationsBuilt}共起パターン, ` +
+                    `${result.templateMatchesFound}協働パターン`
+                );
+                // Refresh discourse view
+                const leaves = this.app.workspace.getLeavesOfType(DISCOURSE_VIEW_TYPE);
+                for (const leaf of leaves) {
+                    (leaf.view as DiscourseView).refresh();
+                }
+            },
+        });
+
+        this.addCommand({
+            id: 'discourse-scrape-abort',
+            name: '談話: スクレープを中止',
+            callback: () => {
+                this.scrapeEngine?.abort();
+                new Notice('スクレープを中止しました。');
+            },
+        });
+
+        // Mount toolbar and start highlighter after workspace is ready
+        this.app.workspace.onLayoutReady(async () => {
             this.toolbar.mount();
             this.highlighter.start();
+
+            // Load discourse index
+            if (this.discourseIndex) {
+                await this.discourseIndex.load();
+            }
+
+            // Auto-load dictionaries if enabled
+            if (this.settings.enableDictLookup && this.settings.dictionaryFolder) {
+                this.loadDictionaries().catch(console.warn);
+            }
+
+            // Auto-scrape on file save
+            if (this.settings.enableScrapeIndex && this.settings.autoScrapeOnSave) {
+                this.registerEvent(
+                    this.app.vault.on('modify', (file) => {
+                        if (file.path.endsWith('.md') && this.scrapeEngine) {
+                            this.scrapeEngine.scrapeFilePath(file.path).catch(console.warn);
+                        }
+                    })
+                );
+            }
         });
     }
 
     onunload(): void {
         this.toolbar.unmount();
         this.highlighter.stop();
+        this.app.workspace.detachLeavesOfType(DISCOURSE_VIEW_TYPE);
     }
 
     async loadSettings(): Promise<void> {
@@ -133,5 +424,32 @@ export default class JpSentenceSurferPlugin extends Plugin {
     refreshToolbar(): void {
         this.toolbar.unmount();
         this.toolbar.mount();
+    }
+
+    /** Load dictionaries from the configured vault folder */
+    async loadDictionaries(): Promise<void> {
+        if (!this.dictEngine) return;
+        const folder = this.settings.dictionaryFolder;
+        if (!folder) return;
+        this.dictEngine.updateFolder(folder);
+        new Notice('辞書を読み込み中...');
+        await this.dictEngine.loadDictionaries();
+        const count = this.dictEngine.totalEntries();
+        new Notice(`辞書読み込み完了: ${count.toLocaleString()} エントリ`);
+    }
+
+    /** Activate (or reveal) the discourse view */
+    private async activateDiscourseView(): Promise<void> {
+        const { workspace } = this.app;
+        const existing = workspace.getLeavesOfType(DISCOURSE_VIEW_TYPE);
+        if (existing.length > 0) {
+            workspace.revealLeaf(existing[0]);
+            return;
+        }
+        const leaf = workspace.getRightLeaf(false);
+        if (leaf) {
+            await leaf.setViewState({ type: DISCOURSE_VIEW_TYPE, active: true });
+            workspace.revealLeaf(leaf);
+        }
     }
 }
