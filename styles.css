@@ -123,3 +123,825 @@
         right: 24px;
     }
 }
+
+/* ─── Toolbar Separator ─────────────────────────────────────────── */
+
+.jp-surfer-toolbar-sep {
+    width: 1px;
+    height: 28px;
+    background: var(--background-modifier-border);
+    margin: 0 4px;
+    flex-shrink: 0;
+}
+
+/* Granularity button — slightly different style */
+.jp-surfer-toolbar-btn--gran {
+    font-size: 12px;
+    min-width: 52px;
+    padding: 8px 10px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+}
+
+/* ─── Discourse Grammar View ────────────────────────────────────── */
+
+.discourse-view {
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    overflow-y: auto;
+    height: 100%;
+    box-sizing: border-box;
+}
+
+.discourse-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.discourse-title {
+    font-size: 18px;
+    font-weight: 700;
+    margin: 0;
+}
+
+.discourse-header-meta {
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+/* Granularity switcher */
+.discourse-granularity-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.discourse-gran-btn {
+    padding: 5px 10px;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 6px;
+    background: var(--interactive-normal);
+    color: var(--text-normal);
+    font-size: 12px;
+    cursor: pointer;
+    transition: background 0.12s, color 0.12s;
+    min-height: 32px;
+}
+
+.discourse-gran-btn:hover {
+    background: var(--interactive-hover);
+}
+
+.discourse-gran-btn.active {
+    background: var(--interactive-accent);
+    color: var(--text-on-accent);
+    border-color: var(--interactive-accent);
+    font-weight: 600;
+}
+
+/* Tabs */
+.discourse-tabs {
+    display: flex;
+    gap: 4px;
+    border-bottom: 1px solid var(--background-modifier-border);
+    padding-bottom: 4px;
+}
+
+.discourse-tab-btn {
+    padding: 6px 14px;
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 13px;
+    cursor: pointer;
+    border-radius: 6px 6px 0 0;
+    transition: background 0.12s, color 0.12s;
+    min-height: 36px;
+}
+
+.discourse-tab-btn:hover {
+    background: var(--background-modifier-hover);
+    color: var(--text-normal);
+}
+
+.discourse-tab-btn.active {
+    color: var(--text-normal);
+    background: var(--background-modifier-hover);
+    font-weight: 600;
+    border-bottom: 2px solid var(--interactive-accent);
+}
+
+/* Content area */
+.discourse-view-content {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+/* Inspector sections */
+.discourse-inspector-section {
+    background: var(--background-secondary);
+    border-radius: 8px;
+    padding: 10px 12px;
+}
+
+.discourse-inspector-section h3 {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin: 0 0 8px 0;
+}
+
+.discourse-inspector-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 4px;
+}
+
+/* Badges */
+.discourse-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 12px;
+    background: var(--background-modifier-border);
+    color: var(--text-muted);
+    font-size: 11px;
+    font-weight: 500;
+}
+
+.discourse-badge-timestamp {
+    background: var(--color-orange-rgb, rgba(255, 150, 0, 0.15));
+    color: var(--color-orange, #ff9600);
+}
+
+/* Tags */
+.discourse-tag-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 6px;
+}
+
+.discourse-tag {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 600;
+    background: var(--interactive-accent);
+    color: var(--text-on-accent);
+}
+
+.discourse-tag-cause-result     { background: rgba(255, 160,  50, 0.18); color: #c86010; }
+.discourse-tag-contrast         { background: rgba( 60, 140, 220, 0.18); color: #1870c8; }
+.discourse-tag-elaboration      { background: rgba( 80, 180, 100, 0.18); color: #187830; }
+.discourse-tag-concession       { background: rgba(180,  60, 200, 0.18); color: #8c1ea0; }
+.discourse-tag-topic-shift      { background: rgba(200,  60,  60, 0.18); color: #a01818; }
+.discourse-tag-topic-return     { background: rgba( 60, 180, 180, 0.18); color: #0a7878; }
+.discourse-tag-summary          { background: rgba(255, 200,   0, 0.18); color: #886600; }
+.discourse-tag-confirmation-seeking { background: rgba( 60, 180, 255, 0.15); color: #0060b0; }
+.discourse-tag-hearsay          { background: rgba(160, 130,  80, 0.18); color: #604010; }
+.discourse-tag-evidential       { background: rgba(100, 100, 200, 0.18); color: #2828b0; }
+.discourse-tag-emphasis         { background: rgba(255,  60,  60, 0.18); color: #a80000; }
+.discourse-tag-softening        { background: rgba( 80, 200, 150, 0.18); color: #008040; }
+.discourse-tag-hedge            { background: rgba(180, 180, 180, 0.18); color: #555; }
+.discourse-tag-topic-setter     { background: rgba(100, 200, 255, 0.18); color: #006090; }
+
+/* Marker list */
+.discourse-marker-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.discourse-marker-list li {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+}
+
+.discourse-marker-type-label {
+    color: var(--text-muted);
+    font-size: 12px;
+}
+
+/* Annotated text */
+.discourse-annotated-text {
+    font-size: 14px;
+    line-height: 1.8;
+    padding: 8px;
+    background: var(--background-primary);
+    border-radius: 6px;
+    word-break: break-all;
+}
+
+.discourse-annotated-marker {
+    padding: 1px 2px;
+    border-radius: 3px;
+    cursor: help;
+}
+
+/* Marker color classes */
+.discourse-marker-opening       { background: rgba( 60, 140, 255, 0.2); border-bottom: 2px solid #3c8cff; }
+.discourse-marker-closing       { background: rgba( 60, 200, 100, 0.2); border-bottom: 2px solid #3cc864; }
+.discourse-marker-connective    { background: rgba(255, 160,  50, 0.2); border-bottom: 2px solid #ffa032; }
+.discourse-marker-boundary      { background: rgba(220,  60,  60, 0.2); border-bottom: 2px solid #dc3c3c; }
+.discourse-marker-interactional { background: rgba(180,  80, 220, 0.2); border-bottom: 2px solid #b450dc; }
+
+/* Context section */
+.discourse-context-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.discourse-context-body {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 13px;
+    line-height: 1.6;
+}
+
+.discourse-context-before { color: var(--text-muted); }
+.discourse-context-after  { color: var(--text-muted); }
+
+.discourse-context-chunk {
+    padding: 4px 8px;
+    background: rgba(255, 208, 0, 0.12);
+    border-left: 3px solid var(--interactive-accent);
+    border-radius: 0 4px 4px 0;
+    font-weight: 500;
+}
+
+.discourse-context-label {
+    font-weight: 600;
+    color: var(--text-muted);
+    font-size: 11px;
+}
+
+/* Inspector actions */
+.discourse-inspector-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+}
+
+.discourse-btn {
+    padding: 6px 14px;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 6px;
+    background: var(--interactive-normal);
+    color: var(--text-normal);
+    font-size: 13px;
+    cursor: pointer;
+    min-height: 36px;
+    transition: background 0.12s;
+}
+
+.discourse-btn:hover { background: var(--interactive-hover); }
+.discourse-btn-danger {
+    background: rgba(200, 50, 50, 0.1);
+    border-color: rgba(200, 50, 50, 0.3);
+    color: #c83232;
+}
+.discourse-btn-danger:hover { background: rgba(200, 50, 50, 0.2); }
+
+/* Index browser */
+.discourse-search-row {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.discourse-search-input {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 8px;
+    background: var(--background-primary);
+    color: var(--text-normal);
+    font-size: 14px;
+    box-sizing: border-box;
+}
+
+.discourse-filter-row {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.discourse-filter-select {
+    flex: 1;
+    min-width: 120px;
+    padding: 6px 8px;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 6px;
+    background: var(--background-primary);
+    color: var(--text-normal);
+    font-size: 12px;
+}
+
+.discourse-results {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 4px;
+}
+
+/* Index card */
+.discourse-index-card {
+    background: var(--background-secondary);
+    border-radius: 8px;
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    border: 1px solid var(--background-modifier-border);
+}
+
+.discourse-card-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.discourse-card-source {
+    font-size: 11px;
+    color: var(--text-muted);
+}
+
+.discourse-card-date {
+    font-size: 11px;
+    color: var(--text-faint);
+    margin-left: auto;
+}
+
+.discourse-card-text {
+    font-size: 13px;
+    margin: 0;
+    line-height: 1.5;
+}
+
+.discourse-card-actions {
+    display: flex;
+    gap: 6px;
+}
+
+.discourse-marker-summary {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+}
+
+.discourse-marker-chip {
+    padding: 1px 7px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.discourse-marker-chip.opening {
+    background: rgba(60, 140, 255, 0.15);
+    color: #1a6cd4;
+}
+
+.discourse-marker-chip.closing {
+    background: rgba(60, 200, 100, 0.15);
+    color: #187830;
+}
+
+/* Overlay preview */
+.discourse-overlay-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.discourse-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.discourse-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    color: var(--text-muted);
+}
+
+.discourse-legend-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.discourse-overlay-preview {
+    background: var(--background-secondary);
+    border-radius: 8px;
+    padding: 10px;
+}
+
+.discourse-overlay-list {
+    background: var(--background-secondary);
+    border-radius: 8px;
+    padding: 10px;
+}
+
+.discourse-marker-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 3px 6px;
+    border-radius: 4px;
+    font-size: 13px;
+    margin-bottom: 3px;
+}
+
+.discourse-marker-surface {
+    font-weight: 600;
+    min-width: 80px;
+}
+
+.discourse-marker-type {
+    font-size: 11px;
+    color: var(--text-muted);
+}
+
+/* Empty / hint states */
+.discourse-empty, .discourse-hint {
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 13px;
+    padding: 20px;
+}
+
+/* ─── Dictionary Lookup Modal ───────────────────────────────────── */
+
+.dict-lookup-modal {
+    /* Bottom-sheet feel — wide but bounded */
+    max-width: 600px;
+    width: 100%;
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    overflow: hidden;
+    border-radius: 16px 16px 0 0;
+}
+
+/* On desktop, look like a normal modal */
+@media (min-width: 600px) {
+    .dict-lookup-modal {
+        border-radius: 12px;
+    }
+}
+
+.dict-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 16px 8px;
+    border-bottom: 1px solid var(--background-modifier-border);
+    flex-shrink: 0;
+}
+
+.dict-title {
+    font-size: 18px;
+    font-weight: 700;
+    margin: 0;
+}
+
+.dict-close-btn {
+    width: 36px;
+    height: 36px;
+    border: none;
+    background: var(--background-modifier-hover);
+    border-radius: 50%;
+    font-size: 14px;
+    cursor: pointer;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Search bar */
+.dict-search-bar {
+    padding: 12px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    border-bottom: 1px solid var(--background-modifier-border);
+    flex-shrink: 0;
+}
+
+.dict-input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.dict-search-input {
+    width: 100%;
+    padding: 12px 44px 12px 16px;
+    border: 2px solid var(--background-modifier-border);
+    border-radius: 12px;
+    background: var(--background-primary);
+    color: var(--text-normal);
+    font-size: 18px; /* Large font for mobile readability */
+    box-sizing: border-box;
+    transition: border-color 0.15s;
+    -webkit-appearance: none;
+}
+
+.dict-search-input:focus {
+    outline: none;
+    border-color: var(--interactive-accent);
+}
+
+.dict-clear-btn {
+    position: absolute;
+    right: 10px;
+    width: 28px;
+    height: 28px;
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 12px;
+    cursor: pointer;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.dict-paste-btn {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 8px;
+    background: var(--interactive-normal);
+    color: var(--text-muted);
+    font-size: 14px;
+    cursor: pointer;
+    text-align: center;
+    min-height: 44px;
+}
+
+.dict-paste-btn:hover { background: var(--interactive-hover); }
+
+/* Status bar */
+.dict-status-bar {
+    padding: 6px 16px;
+    font-size: 11px;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border-bottom: 1px solid var(--background-modifier-border);
+    flex-shrink: 0;
+}
+
+.dict-status-ok    { color: #3cb878; }
+.dict-status-warning { color: #e89020; }
+
+.dict-btn {
+    padding: 6px 14px;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 8px;
+    background: var(--interactive-normal);
+    color: var(--text-normal);
+    font-size: 13px;
+    cursor: pointer;
+    min-height: 44px; /* Apple HIG minimum touch target */
+    transition: background 0.12s;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.dict-btn:hover { background: var(--interactive-hover); }
+.dict-btn:active { background: var(--interactive-accent); color: var(--text-on-accent); }
+
+.dict-btn-primary {
+    background: var(--interactive-accent);
+    color: var(--text-on-accent);
+    border-color: var(--interactive-accent);
+}
+
+.dict-btn-primary:hover { opacity: 0.9; }
+
+.dict-btn-sm {
+    min-height: 36px;
+    padding: 4px 10px;
+    font-size: 12px;
+}
+
+/* Results area */
+.dict-results {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px 16px 16px;
+    -webkit-overflow-scrolling: touch; /* iOS momentum scrolling */
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    /* Ensure input stays visible above keyboard on iOS */
+    scroll-padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.dict-results-count {
+    font-size: 12px;
+    color: var(--text-muted);
+    text-align: right;
+}
+
+.dict-hint, .dict-empty, .dict-error {
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 14px;
+    padding: 24px;
+}
+
+.dict-error { color: #e84040; }
+
+/* Entry card */
+.dict-entry-card {
+    background: var(--background-secondary);
+    border-radius: 12px;
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    border: 1px solid var(--background-modifier-border);
+}
+
+.dict-entry-header {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.dict-entry-reading {
+    font-size: 13px;
+    color: var(--text-muted);
+    line-height: 1.4;
+}
+
+.dict-entry-term {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--text-normal);
+    line-height: 1.2;
+}
+
+/* Tags */
+.dict-entry-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.dict-tag {
+    display: inline-block;
+    padding: 2px 7px;
+    border-radius: 10px;
+    font-size: 11px;
+    background: var(--background-modifier-border);
+    color: var(--text-muted);
+}
+
+.dict-tag-dict {
+    background: rgba(60, 140, 255, 0.15);
+    color: #1870d4;
+    font-weight: 600;
+}
+
+.dict-tag-rule {
+    background: rgba(255, 160, 50, 0.15);
+    color: #c87010;
+}
+
+/* Definitions */
+.dict-entry-defs {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.dict-def {
+    font-size: 14px;
+    line-height: 1.6;
+    color: var(--text-normal);
+}
+
+.dict-def-num {
+    font-weight: 600;
+    color: var(--text-muted);
+    font-size: 12px;
+}
+
+.dict-def-structured {
+    font-size: 13px;
+}
+
+/* Example sentences */
+.dict-sentences {
+    border-top: 1px solid var(--background-modifier-border);
+    padding-top: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.dict-sentences-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin: 0 0 4px 0;
+}
+
+.dict-sentence-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 6px 8px;
+    background: var(--background-primary);
+    border-radius: 8px;
+}
+
+.dict-sentence-text {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.dict-sentence-jp {
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.dict-sentence-en {
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+/* Entry actions */
+.dict-entry-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+/* Sentence expand section */
+.dict-sentence-expand {
+    border-top: 1px solid var(--background-modifier-border);
+    padding-top: 8px;
+    margin-top: 4px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.dict-sentence-expand h4 {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-muted);
+    margin: 0 0 4px 0;
+}
+
+/* ─── Safe area support (iPhone notch / Dynamic Island) ──────────── */
+
+.jp-surfer-toolbar[data-position="bottom"] {
+    padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+}
+
+.jp-surfer-toolbar[data-position="top"] {
+    padding-top: calc(8px + env(safe-area-inset-top, 0px));
+}
+
+/* Smooth momentum scrolling for all scrollable plugin containers */
+.discourse-view-content,
+.discourse-results,
+.dict-results {
+    -webkit-overflow-scrolling: touch;
+}

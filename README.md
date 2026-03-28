@@ -118,3 +118,137 @@ Then enable in **Obsidian → Settings → Community plugins**.
 ## License
 
 MIT © silasnahan-sys
+
+---
+
+## 談話文法 (Discourse Grammar) Mode
+
+An additional discourse-level analysis layer that works alongside the existing bunsetsu surfing. Provides multi-granularity discourse pattern detection, visualization, and indexing of captured chunks.
+
+### Discourse Granularity Levels
+
+| Level | Name | Description |
+|-------|------|-------------|
+| 1 | 形態素 (`morpheme`) | Individual morpheme tokens |
+| 2 | 文節 (`bunsetsu`) | Bunsetsu phrase chunks (existing system) |
+| 3 | 節 (`clause`) | Clauses bounded by conjunctive particles |
+| 4 | 発話 (`utterance`) | Full utterances / sentences |
+| 5 | ターン (`turn`) | Speaker turns |
+| 6 | 交換 (`exchange`) | Adjacent turn pairs |
+| 7 | エピソード (`episode`) | Topic-bounded discourse episodes |
+
+Cycle through levels with **Discourse: Cycle Granularity** command or tap the granularity indicator in the toolbar.
+
+### Discourse Patterns Detected
+
+- **発話冒頭表現 (Opening markers):** 結局, 要するに, つまり, まあ, なんか, やっぱり, ていうか, ほら, だから, じゃあ, ...
+- **発話末表現 (Closing markers):** わけだから, はずなんですよね, ものですから, じゃないですか, んですよ, んですけど, かなと思って, ...
+- **論理展開パターン (Logical connectives):** cause-result, contrast, elaboration, concession
+- **談話境界標識 (Boundary markers):** ところで, そういえば, 話変わるけど, 要は
+- **相互行為的表現 (Interactional particles):** ね, よ, でしょ, じゃない
+
+All patterns are detected using TinySegmenter morpheme token sequences to avoid false positives.
+
+### Discourse Commands
+
+| Command | Description |
+|---------|-------------|
+| **談話: 次の単位へ** | Surf to next discourse unit at current granularity |
+| **談話: 前の単位へ** | Surf to previous discourse unit |
+| **談話: 現在の単位を選択** | Select current discourse unit |
+| **談話: チャンクを保存** | Capture current chunk to discourse index |
+| **談話: 索引を開く** | Open the discourse index browser panel |
+| **談話: 粒度を切り替え** | Cycle through granularity levels |
+| **談話: オーバーレイ切替** | Toggle discourse pattern overlay |
+
+### Discourse Index
+
+When you capture a chunk, the system:
+1. Runs full discourse grammar analysis (opening/closing/internal markers, boundary markers)
+2. Pulls collocations from the jp-collocations plugin if available
+3. Creates an indexed entry with full metadata
+4. Persists to `discourse-index.json` (configurable)
+
+The index is browsable and filterable by: opening marker, closing marker, pattern tag, granularity, collocation, source file.
+
+### Discourse View Panel
+
+Open the panel with **談話: 索引を開く** or click 📚 in the toolbar.
+
+- **🔍 検査 (Inspector):** Annotated view of a captured chunk with color-coded markers
+- **📚 索引 (Index browser):** Searchable list of all captured chunks
+- **🎨 表示 (Overlay preview):** Live pattern overlay of the active editor
+
+### Toolbar (Discourse buttons)
+
+| Button | Action |
+|--------|--------|
+| Granularity label (e.g. 節) | Tap to cycle granularity |
+| ← → | Previous / next discourse unit |
+| ⊕ | Capture current chunk |
+| 🎨 | Toggle overlay |
+| 📚 | Open index browser |
+
+---
+
+## 辞書 (Yomitan-Style Dictionary Lookup)
+
+An in-Obsidian dictionary search UI optimized for iOS mobile (iPhone 17 / iPad Mini 7), supporting Yomitan-format dictionaries.
+
+### Setup
+
+1. Extract your Yomitan dictionary zip files into a vault folder (default: `Dictionaries/`). Each dictionary should be in its own sub-folder containing `index.json` and `term_bank_*.json` files.
+2. Set the **Dictionary folder** in plugin settings.
+3. Use **辞書: 辞書を読み込む** to load the dictionaries.
+
+### Features
+
+- **Auto-search** as you type (debounced)
+- **Paste from clipboard** button for quick lookup
+- **Scan mode:** Select text in a transcript → tap 📖 → see all possible lookups for that text (longest match first)
+- **Deconjugation-aware search:** て-form, た-form, negative, masu-form, i-adj
+- **Save as Collocation:** Save the entry term to the jp-collocations plugin or a vault folder
+- **Save Example Sentences:** Save individual example sentences from dictionary entries to `Saved Sentences/`
+
+### Dictionary Commands
+
+| Command | Description |
+|---------|-------------|
+| **辞書: 検索** | Open dictionary lookup (uses selected text if any) |
+| **辞書: 辞書を読み込む** | Reload dictionaries from vault folder |
+
+### Mobile Optimizations
+
+- Large touch targets (minimum 44pt, Apple HIG)
+- Bottom-sheet style modal (slides up from bottom)
+- Swipe to dismiss
+- Large 18px search input
+- iOS safe area insets respected
+- Smooth momentum scrolling
+- Clipboard paste button
+
+### Settings (Dictionary)
+
+| Setting | Description | Default |
+|---------|-------------|---------|
+| Enable dictionary lookup | Toggle the feature | `true` |
+| Dictionary folder | Vault folder with extracted Yomitan dicts | `Dictionaries` |
+| Saved sentences folder | Where to save example sentences | `Saved Sentences` |
+| Saved collocations folder | Where to save collocation entries | `JP Collocations` |
+| Scan mode max characters | Max chars scanned in scan mode | `20` |
+| Show dictionary button in toolbar | Show 📖 in floating toolbar | `true` |
+
+---
+
+## Settings Reference (New)
+
+### Discourse Grammar
+
+| Setting | Description | Default |
+|---------|-------------|---------|
+| Discourse granularity | Default level for surfing/visualization | `clause` |
+| Show discourse overlay | Colored annotations on text | `true` |
+| Discourse index path | JSON file path for index | `discourse-index.json` |
+| Auto-detect patterns | Detect on note open | `true` |
+| Context expansion mode | `smart` (discourse boundaries) or `fixed` | `smart` |
+| Fixed context chars | Chars of context in fixed mode | `200` |
