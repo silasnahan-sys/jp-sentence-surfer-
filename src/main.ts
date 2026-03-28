@@ -14,14 +14,23 @@ import {
 import { FloatingToolbar } from './ui/FloatingToolbar';
 import { SentenceHighlighter } from './ui/SentenceHighlighter';
 import { JP_COLLOCATIONS_PLUGIN_ID } from './constants';
+import { DiscourseIndex } from './discourse/discourse-index';
+import { DictEngine } from './dictionary/dict-engine';
 
 export default class JpSentenceSurferPlugin extends Plugin {
     settings: JpSentenceSurferSettings;
+    discourseIndex: DiscourseIndex;
+    dictEngine: DictEngine;
     private toolbar: FloatingToolbar;
     private highlighter: SentenceHighlighter;
 
     async onload(): Promise<void> {
         await this.loadSettings();
+
+        this.discourseIndex = new DiscourseIndex(this);
+        await this.discourseIndex.load();
+
+        this.dictEngine = new DictEngine();
 
         this.toolbar = new FloatingToolbar(this);
         this.highlighter = new SentenceHighlighter(this);
