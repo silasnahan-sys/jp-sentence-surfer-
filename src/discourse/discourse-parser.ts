@@ -118,9 +118,13 @@ export function parseUtterances(text: string): DiscourseUnit[] {
     const units: DiscourseUnit[] = [];
     const boundaries: number[] = [0];
     let m: RegExpExecArray | null;
-    const re = new RegExp(UTTERANCE_BOUNDARY_RE.source, 'g');
+    // Create a fresh regex each call to avoid shared lastIndex state
+    const re = /[。！？!?\n]+/g;
     while ((m = re.exec(text)) !== null) {
-        boundaries.push(m.index + m[0].length);
+        const pos = m.index + m[0].length;
+        boundaries.push(pos);
+        // Safety: advance past a zero-length match (shouldn't happen here but be safe)
+        if (m[0].length === 0) re.lastIndex++;
     }
     if (boundaries[boundaries.length - 1] !== text.length) {
         boundaries.push(text.length);

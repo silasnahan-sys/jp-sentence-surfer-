@@ -115,8 +115,8 @@ export function detectPatterns(tokens: string[], textOffset: number = 0): Discou
 
             // Determine position class
             const totalTokens = tokens.length;
-            const isOpening = i <= 3; // within first 3 morphemes
-            const isClosing = i >= totalTokens - 6; // within last 5 morphemes
+            const isOpening = i <= 3; // within first 4 morphemes (positions 0–3)
+            const isClosing = i >= totalTokens - 6; // within last 6 morphemes
 
             results.push({
                 id: `${pat.patternSetId}-${startChar}`,

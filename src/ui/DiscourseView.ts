@@ -21,6 +21,7 @@ import {
     findUnitAt,
 } from '../discourse/discourse-parser';
 import { DiscourseIndex, DiscourseIndexEntry } from '../discourse/discourse-index';
+import { detectPatternsInText } from '../discourse/discourse-grammar';
 
 export const DISCOURSE_VIEW_TYPE = 'jp-surfer-discourse-view';
 
@@ -263,7 +264,6 @@ export class DiscourseView extends ItemView {
             return;
         }
 
-        const { detectPatternsInText } = require('../discourse/discourse-grammar');
         const markers: DiscourseMarker[] = detectPatternsInText(text);
 
         if (markers.length === 0) {

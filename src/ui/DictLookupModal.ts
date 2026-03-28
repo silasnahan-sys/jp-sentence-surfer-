@@ -41,6 +41,9 @@ export class DictLookupModal extends Modal {
     private dragStartY = 0;
     private isDragging = false;
 
+    // Keyboard listener cleanup
+    private _viewportResizeHandler: (() => void) | null = null;
+
     constructor(app: App, plugin: JpSentenceSurferPlugin, engine: DictEngine, initialQuery = '') {
         super(app);
         this.plugin = plugin;
@@ -121,6 +124,11 @@ export class DictLookupModal extends Modal {
     }
 
     onClose(): void {
+        // Clean up keyboard listener
+        if (this._viewportResizeHandler && window.visualViewport) {
+            window.visualViewport.removeEventListener('resize', this._viewportResizeHandler);
+            this._viewportResizeHandler = null;
+        }
         this.contentEl.empty();
     }
 
@@ -410,12 +418,7 @@ export class DictLookupModal extends Modal {
                 this.sheetEl.style.marginBottom = '';
             }
         };
+        this._viewportResizeHandler = onResize;
         vv.addEventListener('resize', onResize);
-        // Clean up when modal closes (override onClose adds the removal)
-        const origClose = this.onClose.bind(this);
-        this.onClose = () => {
-            vv.removeEventListener('resize', onResize);
-            origClose();
-        };
     }
 }

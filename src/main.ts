@@ -243,12 +243,20 @@ export default class JpSentenceSurferPlugin extends Plugin {
     }
 
     async loadSettings(): Promise<void> {
-        const saved = await this.loadData();
+        const saved = (await this.loadData()) ?? {};
         this.settings = {
             ...DEFAULT_SETTINGS,
             ...saved,
-            discourse: { ...DEFAULT_SETTINGS.discourse, ...(saved?.discourse ?? {}) },
-            dictionary: { ...DEFAULT_SETTINGS.dictionary, ...(saved?.dictionary ?? {}) },
+            discourse: {
+                ...DEFAULT_SETTINGS.discourse,
+                ...(typeof saved.discourse === 'object' && saved.discourse !== null
+                    ? saved.discourse : {}),
+            },
+            dictionary: {
+                ...DEFAULT_SETTINGS.dictionary,
+                ...(typeof saved.dictionary === 'object' && saved.dictionary !== null
+                    ? saved.dictionary : {}),
+            },
         };
     }
 

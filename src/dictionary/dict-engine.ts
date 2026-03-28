@@ -203,7 +203,10 @@ export class DictEngine {
                 const raw = await this.app.vault.read(tf);
                 const rows: YomitanTermRow[] = JSON.parse(raw);
                 for (const row of rows) {
-                    if (!Array.isArray(row) || row.length < 8) continue;
+                    if (!Array.isArray(row) || row.length < 8) {
+                        console.warn(`[DictEngine] Skipping malformed row in ${tf.path}:`, row);
+                        continue;
+                    }
                     entries.push({
                         term: row[0],
                         reading: row[1],

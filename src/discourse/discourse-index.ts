@@ -88,7 +88,9 @@ export class DiscourseIndex {
         const internalMarkers = markers.filter(m => !m.isOpening && !m.isClosing);
 
         const chunk: DiscourseChunk = {
-            id: `chunk-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+            id: `chunk-${typeof crypto !== 'undefined' && crypto.randomUUID
+                ? crypto.randomUUID()
+                : `${Date.now()}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`}`,
             text,
             rawText: text,
             start,
