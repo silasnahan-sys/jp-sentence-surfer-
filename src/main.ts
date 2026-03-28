@@ -255,7 +255,7 @@ export default class JpSentenceSurferPlugin extends Plugin {
 
     async loadSettings(): Promise<void> {
         this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
-        // Ensure nested objects are initialised
+        // Ensure nested objects are initialized
         if (!this.settings.discourse) this.settings.discourse = DEFAULT_SETTINGS.discourse;
         if (!this.settings.dictionary) this.settings.dictionary = DEFAULT_SETTINGS.dictionary;
     }

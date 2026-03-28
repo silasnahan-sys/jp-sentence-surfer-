@@ -58,7 +58,10 @@ function parseMorphemes(text: string): DiscourseUnit[] {
     for (const token of tokens) {
         const idx = text.indexOf(token, offset);
         if (idx === -1) {
-            // Token not found from current offset — skip without adjusting offset
+            // Token not found from current offset — advance past current position to
+            // avoid stalling if the segmenter produces tokens that don't align with
+            // the raw text at this point (e.g. whitespace normalization edge cases).
+            offset += token.length;
             continue;
         }
         units.push(buildUnit(token, idx, idx + token.length, DiscourseGranularity.morpheme));

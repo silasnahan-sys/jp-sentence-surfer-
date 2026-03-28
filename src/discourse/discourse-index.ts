@@ -14,11 +14,17 @@ export interface DiscourseChunkEntry {
     surroundingContext: string;
 }
 
+/** Minimal interface for plugin methods used by the index (avoids circular import). */
+interface PluginDataStore {
+    loadData(): Promise<Record<string, unknown> | null>;
+    saveData(data: Record<string, unknown>): Promise<void>;
+}
+
 export class DiscourseIndex {
     private entries: DiscourseChunkEntry[];
-    private plugin: any;
+    private plugin: PluginDataStore;
 
-    constructor(plugin: any) {
+    constructor(plugin: PluginDataStore) {
         this.plugin = plugin;
         this.entries = [];
     }
@@ -92,12 +98,12 @@ export class DiscourseIndex {
     }
 
     async save(): Promise<void> {
-        const existing = (await this.plugin.loadData()) ?? {};
+        const existing = ((await this.plugin.loadData()) ?? {}) as Record<string, unknown>;
         await this.plugin.saveData({ ...existing, discourseIndex: this.entries });
     }
 
     async load(): Promise<void> {
         const data = await this.plugin.loadData();
-        this.entries = data?.discourseIndex ?? [];
+        this.entries = (data?.discourseIndex as DiscourseChunkEntry[] | undefined) ?? [];
     }
 }
