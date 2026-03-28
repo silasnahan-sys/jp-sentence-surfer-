@@ -133,7 +133,6 @@ function detectRelationships(bits: GrammarBitInstance[]): GrammarBitRelationship
 
             let type: GrammarBitRelationship['type'];
             if (morphDist <= 2)       type = 'adjacent';
-            else if (charDist <= 15)  type = 'proximate';
             else if (charDist <= 40)  type = 'proximate';
             else                      type = 'distant';
 

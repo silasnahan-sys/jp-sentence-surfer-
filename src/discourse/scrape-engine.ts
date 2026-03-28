@@ -257,13 +257,24 @@ export class ScrapeEngine {
     }
 
     private splitIntoChunks(text: string): string[] {
-        // Split on blank lines first, then on JP sentence-ending characters
+        // Split on blank lines first, then on JP sentence-ending characters.
+        // Uses a manual split to avoid lookbehind (not universally supported).
         const paragraphs = text.split(/\n{2,}/);
         const chunks: string[] = [];
         for (const para of paragraphs) {
-            // Further split long paragraphs on JP sentence boundaries
-            const sentences = para.split(/(?<=[。！？])/);
-            for (const sent of sentences) {
+            // Split on JP sentence-final punctuation while keeping the delimiter
+            const parts: string[] = [];
+            let current = '';
+            for (const ch of para) {
+                current += ch;
+                if (ch === '。' || ch === '！' || ch === '？') {
+                    parts.push(current);
+                    current = '';
+                }
+            }
+            if (current.trim()) parts.push(current);
+
+            for (const sent of parts) {
                 const trimmed = sent.trim();
                 if (trimmed.length > 0) chunks.push(trimmed);
             }

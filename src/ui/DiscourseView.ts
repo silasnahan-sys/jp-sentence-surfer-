@@ -621,13 +621,11 @@ export class DiscourseView extends ItemView {
                 row.createSpan({ cls: 'jp-surfer-discourse-var-nuance', text: node.nuanceShift });
                 row.createSpan({ cls: 'jp-surfer-discourse-var-count', text: `${count}件` });
 
-                if (count > 0 || true) { // always clickable
-                    row.addClass('jp-surfer-discourse-var-row-clickable');
-                    row.addEventListener('click', () => {
-                        this.variationSelectedSurface = node.surface;
-                        this.render();
-                    });
-                }
+                row.addClass('jp-surfer-discourse-var-row-clickable');
+                row.addEventListener('click', () => {
+                    this.variationSelectedSurface = node.surface;
+                    this.render();
+                });
             }
         } else {
             // Show all occurrences of the selected variation
