@@ -123,3 +123,383 @@
         right: 24px;
     }
 }
+
+/* ─── Toolbar: divider and granularity button ───────────────────── */
+
+.jp-surfer-toolbar-divider {
+    color: var(--text-muted);
+    padding: 0 2px;
+    user-select: none;
+    pointer-events: none;
+}
+
+.jp-surfer-granularity-btn {
+    font-size: 11px;
+    min-width: 44px;
+    padding: 0 4px;
+    letter-spacing: -0.5px;
+}
+
+/* ─── Discourse View (ItemView panel) ───────────────────────────── */
+
+.jp-discourse-view {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+    font-size: 14px;
+}
+
+.jp-discourse-tabs {
+    display: flex;
+    border-bottom: 1px solid var(--background-modifier-border);
+    flex-shrink: 0;
+}
+
+.jp-discourse-tab-btn {
+    flex: 1;
+    padding: 10px 4px;
+    font-size: 12px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text-muted);
+    border-bottom: 2px solid transparent;
+    min-height: 44px;
+}
+
+.jp-discourse-tab-btn.active {
+    color: var(--text-normal);
+    border-bottom-color: var(--interactive-accent);
+}
+
+.jp-discourse-tab-content {
+    flex: 1;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 12px;
+    display: none;
+}
+
+.jp-discourse-tab-content.active {
+    display: block;
+}
+
+/* ─── Inspector Tab ──────────────────────────────────────────────── */
+
+.jp-discourse-inspector {}
+
+.jp-context-text {
+    color: var(--text-muted);
+    font-size: 12px;
+    margin-bottom: 8px;
+    font-style: italic;
+}
+
+.jp-chunk-text {
+    font-size: 15px;
+    line-height: 1.8;
+    margin-bottom: 10px;
+    padding: 8px;
+    background: var(--background-secondary);
+    border-radius: 6px;
+}
+
+.jp-marker-opening {
+    background: rgba(59, 130, 246, 0.2);
+    color: #3b82f6;
+    border-radius: 3px;
+    padding: 0 2px;
+    font-weight: 600;
+}
+
+.jp-marker-closing {
+    background: rgba(249, 115, 22, 0.2);
+    color: #f97316;
+    border-radius: 3px;
+    padding: 0 2px;
+    font-weight: 600;
+}
+
+.jp-marker-internal {
+    background: rgba(34, 197, 94, 0.2);
+    color: #22c55e;
+    border-radius: 3px;
+    padding: 0 2px;
+    font-weight: 600;
+}
+
+.jp-pattern-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-bottom: 10px;
+}
+
+.jp-pattern-tag {
+    background: var(--interactive-accent);
+    color: var(--text-on-accent);
+    border-radius: 10px;
+    padding: 2px 8px;
+    font-size: 11px;
+}
+
+.jp-pattern-tag--opening {
+    background: #3b82f6;
+    color: #fff;
+}
+
+.jp-pattern-tag--closing {
+    background: #f97316;
+    color: #fff;
+}
+
+.jp-pattern-tag--internal {
+    background: #22c55e;
+    color: #fff;
+}
+
+.jp-capture-btn {
+    width: 100%;
+    padding: 10px;
+    min-height: 44px;
+    background: var(--interactive-accent);
+    color: var(--text-on-accent);
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    cursor: pointer;
+    margin-top: 8px;
+}
+
+.jp-capture-btn:active {
+    opacity: 0.8;
+}
+
+/* ─── Index Browser Tab ──────────────────────────────────────────── */
+
+.jp-index-search {
+    width: 100%;
+    padding: 10px 12px;
+    font-size: 16px;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 8px;
+    background: var(--background-primary);
+    color: var(--text-normal);
+    margin-bottom: 10px;
+    min-height: 44px;
+    box-sizing: border-box;
+}
+
+.jp-index-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.jp-index-entry {
+    padding: 10px 12px;
+    background: var(--background-secondary);
+    border-radius: 8px;
+    cursor: pointer;
+    border: 1px solid transparent;
+    min-height: 44px;
+}
+
+.jp-index-entry:active {
+    border-color: var(--interactive-accent);
+    background: var(--background-modifier-hover);
+}
+
+.jp-index-entry-text {
+    font-size: 13px;
+    color: var(--text-normal);
+    margin-bottom: 4px;
+    line-height: 1.4;
+}
+
+.jp-index-entry-meta {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    color: var(--text-muted);
+}
+
+.jp-marker-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+    flex-shrink: 0;
+}
+
+.jp-marker-dot-opening { background: #3b82f6; }
+.jp-marker-dot-closing { background: #f97316; }
+.jp-marker-dot-internal { background: #22c55e; }
+
+.jp-index-empty {
+    color: var(--text-muted);
+    text-align: center;
+    padding: 24px;
+    font-size: 13px;
+}
+
+/* ─── Overlay Preview Tab ────────────────────────────────────────── */
+
+.jp-overlay-toggle {
+    width: 100%;
+    padding: 12px;
+    min-height: 44px;
+    border: 2px solid var(--interactive-accent);
+    border-radius: 8px;
+    background: none;
+    color: var(--interactive-accent);
+    font-size: 15px;
+    cursor: pointer;
+    margin-bottom: 16px;
+}
+
+.jp-overlay-toggle.active {
+    background: var(--interactive-accent);
+    color: var(--text-on-accent);
+}
+
+.jp-overlay-legend {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.jp-overlay-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+}
+
+.jp-overlay-swatch {
+    width: 16px;
+    height: 16px;
+    border-radius: 4px;
+    flex-shrink: 0;
+}
+
+.jp-overlay-info {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+/* ─── Dictionary Modal ───────────────────────────────────────────── */
+
+.jp-dict-modal .modal-content {
+    padding: 16px;
+}
+
+.jp-dict-modal .modal-title {
+    font-size: 18px;
+    margin-bottom: 12px;
+}
+
+.jp-dict-input-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.jp-dict-input {
+    flex: 1;
+    font-size: 18px;
+    padding: 10px 14px;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 8px;
+    background: var(--background-primary);
+    color: var(--text-normal);
+    min-height: 44px;
+}
+
+.jp-dict-paste-btn {
+    min-width: 44px;
+    min-height: 44px;
+    padding: 0 10px;
+    font-size: 20px;
+    background: var(--background-secondary);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+.jp-dict-results {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    max-height: 60vh;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.jp-dict-result-card {
+    padding: 12px;
+    background: var(--background-secondary);
+    border-radius: 8px;
+    border: 1px solid var(--background-modifier-border);
+}
+
+.jp-dict-headword {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text-normal);
+    margin-bottom: 2px;
+}
+
+.jp-dict-reading {
+    font-size: 13px;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+}
+
+.jp-dict-defs {
+    margin-bottom: 10px;
+}
+
+.jp-dict-def {
+    font-size: 13px;
+    color: var(--text-normal);
+    padding: 2px 0;
+    line-height: 1.5;
+}
+
+.jp-dict-actions {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.jp-dict-save-coll,
+.jp-dict-save-ex {
+    flex: 1;
+    min-height: 44px;
+    padding: 8px 10px;
+    font-size: 12px;
+    border: 1px solid var(--interactive-accent);
+    border-radius: 6px;
+    background: none;
+    color: var(--interactive-accent);
+    cursor: pointer;
+    text-align: center;
+}
+
+.jp-dict-save-coll:active,
+.jp-dict-save-ex:active {
+    background: var(--interactive-accent);
+    color: var(--text-on-accent);
+}
+
+.jp-dict-no-results {
+    text-align: center;
+    color: var(--text-muted);
+    padding: 24px;
+    font-size: 14px;
+}
