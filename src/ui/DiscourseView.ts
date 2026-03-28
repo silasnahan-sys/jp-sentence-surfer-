@@ -235,7 +235,7 @@ export class DiscourseView extends ItemView {
             // Delete button
             const delBtn = meta.createEl('button', {
                 cls: 'jp-discourse-chunk-delete',
-                text: '🗑',
+                text: '✕',
             });
             delBtn.setAttribute('aria-label', 'Delete chunk');
             delBtn.addEventListener('click', () => {

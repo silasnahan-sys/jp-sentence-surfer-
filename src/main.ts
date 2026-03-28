@@ -26,6 +26,8 @@ export default class JpSentenceSurferPlugin extends Plugin {
     private highlighter: SentenceHighlighter;
     discourseIndex: DiscourseIndex;
     dictEngine: DictEngine;
+    /** Raw persisted data, cached by loadSettings to avoid a second loadData() call */
+    private savedRaw: Record<string, any> = {};
 
     async onload(): Promise<void> {
         await this.loadSettings();
@@ -33,10 +35,9 @@ export default class JpSentenceSurferPlugin extends Plugin {
         this.discourseIndex = new DiscourseIndex();
         this.dictEngine = new DictEngine();
 
-        // Load persisted discourse index (data was loaded in loadSettings)
-        const saved = await this.loadData();
-        if (saved?.discourseIndex) {
-            this.discourseIndex.fromJSON(saved.discourseIndex);
+        // Restore persisted discourse index using data already cached by loadSettings
+        if (this.savedRaw.discourseIndex) {
+            this.discourseIndex.fromJSON(this.savedRaw.discourseIndex);
         }
 
         this.toolbar = new FloatingToolbar(this);
@@ -218,17 +219,24 @@ export default class JpSentenceSurferPlugin extends Plugin {
             this.toolbar.mount();
             this.highlighter.start();
 
-            // Update discourse inspector when active leaf changes
+            // Update discourse inspector when active leaf changes (debounced 200ms)
+            let leafChangeTimer: ReturnType<typeof setTimeout> | null = null;
             this.registerEvent(
                 this.app.workspace.on('active-leaf-change', () => {
-                    const view = this.app.workspace.getActiveViewOfType(MarkdownView);
-                    if (!view) return;
-                    const editor = view.editor;
-                    const line = editor.getLine(editor.getCursor().line);
-                    const discourseLeaves = this.app.workspace.getLeavesOfType(DISCOURSE_VIEW_TYPE);
-                    for (const leaf of discourseLeaves) {
-                        (leaf.view as DiscourseView).setText(line);
-                    }
+                    if (leafChangeTimer !== null) clearTimeout(leafChangeTimer);
+                    leafChangeTimer = setTimeout(() => {
+                        leafChangeTimer = null;
+                        // Only update if the discourse panel is open
+                        const discourseLeaves = this.app.workspace.getLeavesOfType(DISCOURSE_VIEW_TYPE);
+                        if (discourseLeaves.length === 0) return;
+                        const view = this.app.workspace.getActiveViewOfType(MarkdownView);
+                        if (!view) return;
+                        const editor = view.editor;
+                        const line = editor.getLine(editor.getCursor().line);
+                        for (const leaf of discourseLeaves) {
+                            (leaf.view as DiscourseView).setText(line);
+                        }
+                    }, 200);
                 })
             );
         });
@@ -240,12 +248,12 @@ export default class JpSentenceSurferPlugin extends Plugin {
     }
 
     async loadSettings(): Promise<void> {
-        const saved = await this.loadData() ?? {};
+        this.savedRaw = (await this.loadData()) ?? {};
         this.settings = {
             ...DEFAULT_SETTINGS,
-            ...saved,
-            discourse: { ...DEFAULT_SETTINGS.discourse, ...(saved.discourse ?? {}) },
-            dict: { ...DEFAULT_SETTINGS.dict, ...(saved.dict ?? {}) },
+            ...this.savedRaw,
+            discourse: { ...DEFAULT_SETTINGS.discourse, ...(this.savedRaw.discourse ?? {}) },
+            dict: { ...DEFAULT_SETTINGS.dict, ...(this.savedRaw.dict ?? {}) },
         };
     }
 
