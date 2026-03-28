@@ -148,6 +148,18 @@ export interface JpSentenceSurferSettings {
     dictScanLength: number;
     /** Show dictionary button in floating toolbar */
     showDictInToolbar: boolean;
+
+    // ─── Scrape Engine Settings ───────────────────────────────────────────────
+    /** Enable vault-wide scrape index */
+    enableScrapeIndex: boolean;
+    /** Vault folder to scrape (empty = entire vault) */
+    scrapeFolderPath: string;
+    /** Path to scrape index JSON file */
+    scrapeIndexPath: string;
+    /** Automatically rescrape on file save */
+    autoScrapeOnSave: boolean;
+    /** Batch size for async scraping */
+    scrapeBatchSize: number;
 }
 
 // ─── Existing interfaces ──────────────────────────────────────────────────────
@@ -222,4 +234,109 @@ export interface SavedSentence {
     term: string;
     savedAt: string;
     tags: string[];
+}
+
+// ─── Variation Tree System ────────────────────────────────────────────────────
+
+export interface VariationNode {
+    surface: string;
+    morphemes: string[];
+    additions: string[];
+    nuanceShift: string;
+    register: 'formal' | 'neutral' | 'casual' | 'rough';
+    spokenFrequency: 'high' | 'medium' | 'low' | 'rare';
+    parentVariation?: string;
+}
+
+export interface VariationTree {
+    stem: string;
+    familyName: string;
+    variations: VariationNode[];
+    functionDescription: string;
+}
+
+// ─── Co-occurrence Constellation System ──────────────────────────────────────
+
+export interface GrammarBitInstance {
+    id: string;
+    surface: string;
+    stemFamily: string;
+    variationId: string;
+    position: number;
+    morphemeIndex: number;
+    category: string;
+    subcategory: string;
+}
+
+export interface GrammarBitRelationship {
+    bitIds: string[];
+    type: 'adjacent' | 'proximate' | 'distant' | 'framing' | 'modifying';
+    morphemeDistance: number;
+    combinedFunction: string;
+    direction: 'a→b' | 'b→a' | 'mutual' | 'parallel';
+}
+
+export interface DiscourseTexture {
+    stance: string[];
+    move: string[];
+    registerLevel: 'formal' | 'neutral' | 'casual' | 'rough';
+    confidence: number;
+}
+
+export interface CoOccurrenceConstellation {
+    id: string;
+    chunkId: string;
+    bits: GrammarBitInstance[];
+    relationships: GrammarBitRelationship[];
+    textureProfile: DiscourseTexture;
+}
+
+// ─── Occurrence Index ─────────────────────────────────────────────────────────
+
+export interface GrammarBitOccurrence {
+    id: string;
+    stemFamily: string;
+    variation: string;
+    surfaceForm: string;
+    chunkId: string;
+    chunkText: string;
+    positionInChunk: number;
+    leftContext: string;
+    rightContext: string;
+    sentenceContext: string;
+    coOccurringBits: string[];
+    constellationId: string;
+    sourceFile: string;
+    sourceTitle: string;
+    timestamp?: string;
+    capturedAtGranularity: string;
+    capturedAt: number;
+    scraped?: boolean;
+}
+
+// ─── Co-operation Templates ───────────────────────────────────────────────────
+
+export interface TemplateSlot {
+    position: 'opening' | 'early' | 'mid' | 'late' | 'closing';
+    acceptedStems: string[];
+    required: boolean;
+}
+
+export interface CoOperationTemplate {
+    name: string;
+    nameJp: string;
+    description: string;
+    slots: TemplateSlot[];
+    function: string;
+    example: string;
+}
+
+export interface CoOperationMatch {
+    templateName: string;
+    chunkId: string;
+    chunkText: string;
+    filledSlots: Array<{ slot: TemplateSlot; matchedSurface: string; matchedStem: string }>;
+    capturedAt: number;
+    sourceFile: string;
+    scraped?: boolean;
 }

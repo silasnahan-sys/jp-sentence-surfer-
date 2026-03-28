@@ -27,6 +27,12 @@ export const DEFAULT_SETTINGS: JpSentenceSurferSettings = {
     savedCollocationFolder: 'JP Collocations',
     dictScanLength: 20,
     showDictInToolbar: true,
+    // Scrape engine
+    enableScrapeIndex: false,
+    scrapeFolderPath: '',
+    scrapeIndexPath: 'discourse-scrape-index.json',
+    autoScrapeOnSave: false,
+    scrapeBatchSize: 20,
 };
 
 export class JpSentenceSurferSettingTab extends PluginSettingTab {
@@ -310,6 +316,73 @@ export class JpSentenceSurferSettingTab extends PluginSettingTab {
                         this.plugin.settings.showDictInToolbar = v;
                         await this.plugin.saveSettings();
                         this.plugin.refreshToolbar();
+                    })
+            );
+
+        // ─── Scrape Engine Settings ─────────────────────────────────────────────
+
+        containerEl.createEl('h3', { text: 'Vault Scrape Index (スクレープ索引)' });
+
+        new Setting(containerEl)
+            .setName('Enable vault-wide scrape index')
+            .setDesc('Automatically scan vault notes to build a grammar occurrence index.')
+            .addToggle(t =>
+                t
+                    .setValue(this.plugin.settings.enableScrapeIndex)
+                    .onChange(async (v) => {
+                        this.plugin.settings.enableScrapeIndex = v;
+                        await this.plugin.saveSettings();
+                    })
+            );
+
+        new Setting(containerEl)
+            .setName('Scrape folder path')
+            .setDesc('Vault folder to scrape (leave empty to scrape the entire vault).')
+            .addText(text =>
+                text
+                    .setPlaceholder('(entire vault)')
+                    .setValue(this.plugin.settings.scrapeFolderPath)
+                    .onChange(async (value) => {
+                        this.plugin.settings.scrapeFolderPath = value;
+                        await this.plugin.saveSettings();
+                    })
+            );
+
+        new Setting(containerEl)
+            .setName('Scrape index path')
+            .setDesc('Path to the scrape index JSON file (relative to vault root).')
+            .addText(text =>
+                text
+                    .setPlaceholder('discourse-scrape-index.json')
+                    .setValue(this.plugin.settings.scrapeIndexPath)
+                    .onChange(async (value) => {
+                        this.plugin.settings.scrapeIndexPath = value || 'discourse-scrape-index.json';
+                        await this.plugin.saveSettings();
+                    })
+            );
+
+        new Setting(containerEl)
+            .setName('Auto-scrape on file save')
+            .setDesc('Incrementally update the scrape index when a file is saved.')
+            .addToggle(t =>
+                t
+                    .setValue(this.plugin.settings.autoScrapeOnSave)
+                    .onChange(async (v) => {
+                        this.plugin.settings.autoScrapeOnSave = v;
+                        await this.plugin.saveSettings();
+                    })
+            );
+
+        new Setting(containerEl)
+            .setName('Scrape batch size')
+            .setDesc('Number of files processed per async batch during a scrape.')
+            .addText(text =>
+                text
+                    .setPlaceholder('20')
+                    .setValue(String(this.plugin.settings.scrapeBatchSize))
+                    .onChange(async (value) => {
+                        this.plugin.settings.scrapeBatchSize = parseInt(value) || 20;
+                        await this.plugin.saveSettings();
                     })
             );
     }

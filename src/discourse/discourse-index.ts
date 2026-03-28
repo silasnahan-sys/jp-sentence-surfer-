@@ -4,8 +4,11 @@
  * When a user captures a chunk at any granularity level, this module:
  *  1. Runs full discourse grammar analysis on the chunk
  *  2. Creates a DiscourseChunkEntry with all metadata
- *  3. Maintains a multi-dimensional index for fast lookup
- *  4. Persists to a JSON file in the vault
+ *  3. Builds a CoOccurrenceConstellation for the chunk
+ *  4. Extracts GrammarBitOccurrence entries into the OccurrenceIndex
+ *  5. Matches CoOperation templates
+ *  6. Maintains a multi-dimensional index for fast lookup
+ *  7. Persists to a JSON file in the vault
  */
 
 import { App, TFile, Notice } from 'obsidian';
@@ -15,15 +18,23 @@ import {
     DiscourseMarker,
     DiscoursePatternType,
     DiscourseUnit,
+    CoOccurrenceConstellation,
+    GrammarBitOccurrence,
+    CoOperationMatch,
 } from '../types';
 import { analyzeDiscourseChunk } from './discourse-grammar';
 import { expandContext } from './discourse-parser';
+import { buildConstellation } from './co-occurrence';
+import { OccurrenceIndex, extractOccurrences } from './occurrence-index';
+import { matchTemplates, COOPERATION_TEMPLATES } from './cooperation-templates';
 
 // ─── Index structure ──────────────────────────────────────────────────────────
 
 interface DiscourseIndexData {
     version: number;
     entries: DiscourseChunkEntry[];
+    constellations?: CoOccurrenceConstellation[];
+    coopMatches?: CoOperationMatch[];
 }
 
 // ─── Main DiscourseIndex class ────────────────────────────────────────────────
@@ -32,11 +43,20 @@ export class DiscourseIndex {
     private app: App;
     private indexPath: string;
     private entries: Map<string, DiscourseChunkEntry> = new Map();
+    private constellations: Map<string, CoOccurrenceConstellation> = new Map();
+    private coopMatches: CoOperationMatch[] = [];
+
+    /** OccurrenceIndex is stored separately but managed here */
+    occurrenceIndex: OccurrenceIndex;
+
     private loaded = false;
 
     constructor(app: App, indexPath: string) {
         this.app = app;
         this.indexPath = indexPath;
+        // OccurrenceIndex lives next to the main index
+        const occPath = indexPath.replace(/\.json$/, '-occurrences.json');
+        this.occurrenceIndex = new OccurrenceIndex(app, occPath);
     }
 
     // ── Persistence ───────────────────────────────────────────────────────────
@@ -51,17 +71,25 @@ export class DiscourseIndex {
                 for (const entry of data.entries ?? []) {
                     this.entries.set(entry.id, entry);
                 }
+                this.constellations.clear();
+                for (const c of data.constellations ?? []) {
+                    this.constellations.set(c.id, c);
+                }
+                this.coopMatches = data.coopMatches ?? [];
             }
         } catch {
             // Index doesn't exist yet — start fresh
         }
+        await this.occurrenceIndex.load();
         this.loaded = true;
     }
 
     async save(): Promise<void> {
         const data: DiscourseIndexData = {
-            version: 1,
+            version: 2,
             entries: Array.from(this.entries.values()),
+            constellations: Array.from(this.constellations.values()),
+            coopMatches: this.coopMatches,
         };
         const json = JSON.stringify(data, null, 2);
         const file = this.app.vault.getAbstractFileByPath(this.indexPath);
@@ -70,12 +98,15 @@ export class DiscourseIndex {
         } else {
             await this.app.vault.create(this.indexPath, json);
         }
+        await this.occurrenceIndex.save();
     }
 
     // ── Entry management ──────────────────────────────────────────────────────
 
     /**
      * Capture a discourse unit and add it to the index.
+     * Also builds a co-occurrence constellation, extracts occurrence entries,
+     * and matches co-operation templates.
      * Returns the created entry.
      */
     async captureChunk(
@@ -112,12 +143,42 @@ export class DiscourseIndex {
         };
 
         this.entries.set(id, entry);
+
+        // Build co-occurrence constellation
+        const constellation = buildConstellation(id, unit.text);
+        this.constellations.set(constellation.id, constellation);
+
+        // Extract occurrence entries
+        const coOccurringBits = [...new Set(constellation.bits.map(b => b.stemFamily))];
+        const occs = extractOccurrences(
+            unit.text,
+            id,
+            constellation.id,
+            sourceFile,
+            sourceFile.split('/').pop()?.replace(/\.md$/, '') ?? sourceFile,
+            unit.granularity,
+            coOccurringBits,
+            ytTimestamp,
+            false,
+        );
+        this.occurrenceIndex.addOccurrences(occs);
+
+        // Match co-operation templates
+        const newMatches = matchTemplates(constellation, unit.text, sourceFile, false);
+        this.coopMatches.push(...newMatches);
+
         await this.save();
         return entry;
     }
 
     removeEntry(id: string): void {
         this.entries.delete(id);
+        // Also remove associated constellations and occurrences
+        for (const [cid, c] of this.constellations) {
+            if (c.chunkId === id) this.constellations.delete(cid);
+        }
+        this.coopMatches = this.coopMatches.filter(m => m.chunkId !== id);
+        this.occurrenceIndex.removeByChunkId(id);
     }
 
     async removeAndSave(id: string): Promise<void> {
@@ -133,6 +194,27 @@ export class DiscourseIndex {
 
     getById(id: string): DiscourseChunkEntry | undefined {
         return this.entries.get(id);
+    }
+
+    // ── Constellation & co-op accessors ───────────────────────────────────────
+
+    getConstellationForChunk(chunkId: string): CoOccurrenceConstellation | undefined {
+        for (const c of this.constellations.values()) {
+            if (c.chunkId === chunkId) return c;
+        }
+        return undefined;
+    }
+
+    getAllConstellations(): CoOccurrenceConstellation[] {
+        return Array.from(this.constellations.values());
+    }
+
+    getCoopMatches(): CoOperationMatch[] {
+        return [...this.coopMatches];
+    }
+
+    getCoopMatchesByTemplate(templateName: string): CoOperationMatch[] {
+        return this.coopMatches.filter(m => m.templateName === templateName);
     }
 
     get size(): number {

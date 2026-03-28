@@ -2,10 +2,14 @@
  * Discourse Grammar Visualization Panel (Obsidian ItemView)
  *
  * Provides:
- *  1. Pattern Overlay Mode  — colored annotation of discourse markers
- *  2. Chunk Inspector Panel — detailed analysis of selected chunk
- *  3. Index Browser         — searchable / filterable index of captured chunks
- *  4. Granularity Switcher  — switch between 7 discourse levels
+ *  1. Pattern Overlay Mode           — colored annotation of discourse markers
+ *  2. Chunk Inspector Panel          — detailed analysis of selected chunk
+ *  3. Index Browser                  — searchable / filterable index of captured chunks
+ *  4. Granularity Switcher           — switch between 7 discourse levels
+ *  5. Variation Tree Browser         — browse stem families and all their variations
+ *  6. Constellation Browser          — browse co-occurrence constellations
+ *  7. Co-operation Pattern Browser   — browse template matches
+ *  8. KWIC Occurrence View           — concordance-style occurrence browser
  */
 
 import { ItemView, WorkspaceLeaf, MarkdownView, Notice } from 'obsidian';
@@ -17,9 +21,20 @@ import {
     DiscoursePatternType,
     DISCOURSE_GRANULARITY_LEVELS,
     DISCOURSE_GRANULARITY_LABELS,
+    GrammarBitOccurrence,
+    CoOccurrenceConstellation,
+    CoOperationMatch,
+    CoOperationTemplate,
 } from '../types';
 import { analyzeDiscourseChunk, getPatternLabel, getMarkerColorClass } from '../discourse/discourse-grammar';
 import { parseAtGranularity, findUnitAt, expandContext } from '../discourse/discourse-parser';
+import {
+    ALL_VARIATION_TREES,
+    VARIATION_TREE_BY_STEM,
+    variationLabel,
+} from '../discourse/variation-trees';
+import { COOPERATION_TEMPLATES, groupMatchesByTemplate } from '../discourse/cooperation-templates';
+import { filterByStance, filterByMove, allStances, allMoves } from '../discourse/co-occurrence';
 
 export const DISCOURSE_VIEW_TYPE = 'jp-surfer-discourse-view';
 
@@ -28,13 +43,33 @@ function basename(filePath: string): string {
     return filePath.split('/').pop() ?? filePath;
 }
 
+type DiscourseTab = 'inspector' | 'index' | 'overlay' | 'variation' | 'constellation' | 'coop' | 'kwic';
+
+/** Tab groups for swipe-based navigation */
+const TAB_ORDER: DiscourseTab[] = ['inspector', 'index', 'overlay', 'variation', 'constellation', 'coop', 'kwic'];
+
 export class DiscourseView extends ItemView {
     private plugin: JpSentenceSurferPlugin;
-    private currentTab: 'inspector' | 'index' | 'overlay' = 'inspector';
+    private currentTab: DiscourseTab = 'inspector';
     private inspectorEntry: DiscourseChunkEntry | null = null;
     private indexSearchQuery = '';
     private indexFilterTag: DiscoursePatternType | '' = '';
     private indexFilterGranularity: DiscourseGranularity | '' = '';
+
+    // Variation tree state
+    private variationSelectedStem = '';
+    private variationSelectedSurface = '';
+
+    // Constellation state
+    private constellationFilterStance = '';
+    private constellationFilterMove = '';
+    private constellationFilterStem = '';
+
+    // Co-op state
+    private coopFilterTemplate = '';
+
+    // KWIC state
+    private kwicQuery = '';
 
     constructor(leaf: WorkspaceLeaf, plugin: JpSentenceSurferPlugin) {
         super(leaf);
@@ -83,9 +118,13 @@ export class DiscourseView extends ItemView {
 
         const content = root.createDiv({ cls: 'discourse-view-content' });
         switch (this.currentTab) {
-            case 'inspector': this.renderInspector(content); break;
-            case 'index':     this.renderIndexBrowser(content); break;
-            case 'overlay':   this.renderOverlayPreview(content); break;
+            case 'inspector':    this.renderInspector(content); break;
+            case 'index':        this.renderIndexBrowser(content); break;
+            case 'overlay':      this.renderOverlayPreview(content); break;
+            case 'variation':    this.renderVariationBrowser(content); break;
+            case 'constellation':this.renderConstellationBrowser(content); break;
+            case 'coop':         this.renderCoopBrowser(content); break;
+            case 'kwic':         this.renderKwicView(content); break;
         }
     }
 
@@ -123,11 +162,15 @@ export class DiscourseView extends ItemView {
     // ─── Tabs ──────────────────────────────────────────────────────────────────
 
     private renderTabs(parent: HTMLElement): void {
-        const tabs = parent.createDiv({ cls: 'discourse-tabs' });
-        const tabDefs: Array<{ id: typeof this.currentTab; label: string }> = [
-            { id: 'inspector', label: '🔍 検査' },
-            { id: 'index',     label: '📚 索引' },
-            { id: 'overlay',   label: '🎨 表示' },
+        const tabs = parent.createDiv({ cls: 'discourse-tabs discourse-tabs-scrollable' });
+        const tabDefs: Array<{ id: DiscourseTab; label: string }> = [
+            { id: 'inspector',    label: '🔍 検査' },
+            { id: 'index',        label: '📚 索引' },
+            { id: 'overlay',      label: '🎨 表示' },
+            { id: 'variation',    label: '🌿 変形' },
+            { id: 'constellation',label: '✨ 共起' },
+            { id: 'coop',         label: '🤝 協働' },
+            { id: 'kwic',         label: '📖 用例' },
         ];
         for (const t of tabDefs) {
             const btn = tabs.createEl('button', {
@@ -506,5 +549,472 @@ export class DiscourseView extends ItemView {
                 view.editor.setCursor(view.editor.offsetToPos(entry.sourceOffset.start));
             }
         });
+    }
+
+    // ─── Variation Tree Browser ────────────────────────────────────────────────
+
+    private renderVariationBrowser(parent: HTMLElement): void {
+        const index = this.plugin.discourseIndex;
+        const occIndex = index?.occurrenceIndex;
+
+        const layout = parent.createDiv({ cls: 'jp-surfer-discourse-variation-layout' });
+        const left  = layout.createDiv({ cls: 'jp-surfer-discourse-variation-left' });
+        const right = layout.createDiv({ cls: 'jp-surfer-discourse-variation-right' });
+
+        // Left panel: list of all stem families
+        const listTitle = left.createEl('h4', { text: 'バリエーション・ファミリー' });
+        listTitle.addClass('jp-surfer-discourse-panel-title');
+
+        for (const tree of ALL_VARIATION_TREES) {
+            const totalCount = occIndex?.byStemFamily(tree.stem).length ?? 0;
+            const isSelected = this.variationSelectedStem === tree.stem;
+
+            const item = left.createDiv({
+                cls: 'jp-surfer-discourse-stem-item' + (isSelected ? ' selected' : ''),
+            });
+            const stemLabel = item.createDiv({ cls: 'jp-surfer-discourse-stem-label' });
+            stemLabel.createSpan({ cls: 'jp-surfer-discourse-stem-surface', text: tree.stem });
+            stemLabel.createSpan({ cls: 'jp-surfer-discourse-stem-count', text: ` (${totalCount})` });
+            item.createDiv({ cls: 'jp-surfer-discourse-stem-name', text: tree.familyName });
+
+            item.addEventListener('click', () => {
+                this.variationSelectedStem = tree.stem;
+                this.variationSelectedSurface = '';
+                this.render();
+            });
+        }
+
+        // Right panel: variation list or occurrence list
+        if (!this.variationSelectedStem) {
+            right.createEl('p', {
+                cls: 'jp-surfer-discourse-hint',
+                text: '左のファミリーを選択してください。',
+            });
+            return;
+        }
+
+        const tree = VARIATION_TREE_BY_STEM.get(this.variationSelectedStem);
+        if (!tree) return;
+
+        const treeHeader = right.createDiv({ cls: 'jp-surfer-discourse-tree-header' });
+        treeHeader.createEl('h4', { text: tree.familyName, cls: 'jp-surfer-discourse-panel-title' });
+        treeHeader.createEl('p', { text: tree.functionDescription, cls: 'jp-surfer-discourse-tree-desc' });
+
+        // Show all variations with counts
+        if (!this.variationSelectedSurface) {
+            const varList = right.createDiv({ cls: 'jp-surfer-discourse-var-list' });
+            const dist = occIndex?.variationDistribution(tree.stem) ?? new Map<string, number>();
+
+            for (const node of tree.variations) {
+                const count = dist.get(node.surface) ?? 0;
+                const row = varList.createDiv({ cls: 'jp-surfer-discourse-var-row' });
+
+                const regBadge = row.createSpan({
+                    cls: `jp-surfer-discourse-reg-badge jp-surfer-discourse-reg-${node.register}`,
+                    text: { formal: '敬', neutral: '普', casual: '語', rough: '荒' }[node.register],
+                });
+                const freqDots = row.createSpan({
+                    cls: 'jp-surfer-discourse-freq',
+                    text: { high: '●●●', medium: '●●○', low: '●○○', rare: '○○○' }[node.spokenFrequency],
+                });
+                row.createSpan({ cls: 'jp-surfer-discourse-var-surface', text: node.surface });
+                row.createSpan({ cls: 'jp-surfer-discourse-var-nuance', text: node.nuanceShift });
+                row.createSpan({ cls: 'jp-surfer-discourse-var-count', text: `${count}件` });
+
+                row.addClass('jp-surfer-discourse-var-row-clickable');
+                row.addEventListener('click', () => {
+                    this.variationSelectedSurface = node.surface;
+                    this.render();
+                });
+            }
+        } else {
+            // Show all occurrences of the selected variation
+            const backBtn = right.createEl('button', {
+                cls: 'jp-surfer-discourse-back-btn',
+                text: `← ${tree.stem}`,
+            });
+            backBtn.addEventListener('click', () => {
+                this.variationSelectedSurface = '';
+                this.render();
+            });
+
+            right.createEl('h5', {
+                text: this.variationSelectedSurface,
+                cls: 'jp-surfer-discourse-surface-title',
+            });
+
+            const occs = occIndex?.byVariation(this.variationSelectedSurface) ?? [];
+            if (occs.length === 0) {
+                right.createEl('p', {
+                    cls: 'jp-surfer-discourse-hint',
+                    text: 'まだ用例がありません。',
+                });
+            } else {
+                right.createEl('p', {
+                    cls: 'jp-surfer-discourse-occ-summary',
+                    text: `${occs.length}件の用例`,
+                });
+                const occList = right.createDiv({ cls: 'jp-surfer-discourse-occ-list' });
+                for (const occ of occs.slice(0, 50)) {
+                    this.renderOccurrenceCard(occList, occ);
+                }
+            }
+        }
+    }
+
+    // ─── Constellation Browser ────────────────────────────────────────────────
+
+    private renderConstellationBrowser(parent: HTMLElement): void {
+        const index = this.plugin.discourseIndex;
+        if (!index) {
+            parent.createEl('p', { cls: 'jp-surfer-discourse-hint', text: '索引が読み込まれていません。' });
+            return;
+        }
+
+        let constellations = index.getAllConstellations();
+        const totalConst = constellations.length;
+
+        if (totalConst === 0) {
+            parent.createEl('p', {
+                cls: 'jp-surfer-discourse-hint',
+                text: 'チャンクを保存すると共起パターンが生成されます。',
+            });
+            return;
+        }
+
+        // Filter bar
+        const filterRow = parent.createDiv({ cls: 'jp-surfer-discourse-filter-row' });
+
+        // Stance filter
+        const stances = allStances(constellations);
+        if (stances.length > 0) {
+            const sel = filterRow.createEl('select', { cls: 'jp-surfer-discourse-filter-select' }) as HTMLSelectElement;
+            sel.createEl('option', { value: '', text: 'スタンス: 全て' });
+            for (const s of stances) {
+                const opt = sel.createEl('option', { value: s, text: s });
+                if (this.constellationFilterStance === s) opt.selected = true;
+            }
+            sel.addEventListener('change', () => {
+                this.constellationFilterStance = sel.value;
+                this.render();
+            });
+        }
+
+        // Move filter
+        const moves = allMoves(constellations);
+        if (moves.length > 0) {
+            const sel2 = filterRow.createEl('select', { cls: 'jp-surfer-discourse-filter-select' }) as HTMLSelectElement;
+            sel2.createEl('option', { value: '', text: '談話機能: 全て' });
+            for (const m of moves) {
+                const opt = sel2.createEl('option', { value: m, text: m });
+                if (this.constellationFilterMove === m) opt.selected = true;
+            }
+            sel2.addEventListener('change', () => {
+                this.constellationFilterMove = sel2.value;
+                this.render();
+            });
+        }
+
+        // Apply filters
+        if (this.constellationFilterStance) {
+            constellations = constellations.filter(c =>
+                c.textureProfile.stance.includes(this.constellationFilterStance)
+            );
+        }
+        if (this.constellationFilterMove) {
+            constellations = constellations.filter(c =>
+                c.textureProfile.move.includes(this.constellationFilterMove)
+            );
+        }
+
+        parent.createEl('p', {
+            cls: 'jp-surfer-discourse-count',
+            text: `${constellations.length} / ${totalConst} 共起パターン`,
+        });
+
+        const list = parent.createDiv({ cls: 'jp-surfer-discourse-const-list' });
+        for (const c of constellations.slice(0, 30)) {
+            this.renderConstellationCard(list, c);
+        }
+    }
+
+    private renderConstellationCard(parent: HTMLElement, c: CoOccurrenceConstellation): void {
+        const entry = this.plugin.discourseIndex?.getById(c.chunkId);
+        const card = parent.createDiv({ cls: 'jp-surfer-discourse-const-card' });
+
+        // Grammar bits tag cloud
+        if (c.bits.length > 0) {
+            const bitRow = card.createDiv({ cls: 'jp-surfer-discourse-bit-row' });
+            for (const bit of c.bits.slice(0, 8)) {
+                const badge = bitRow.createSpan({
+                    cls: `jp-surfer-discourse-bit-badge jp-surfer-discourse-bit-${bit.category}`,
+                    text: bit.surface,
+                    attr: { title: bit.stemFamily },
+                });
+                badge.addEventListener('click', () => {
+                    this.currentTab = 'variation';
+                    this.variationSelectedStem = bit.stemFamily;
+                    this.variationSelectedSurface = '';
+                    this.render();
+                });
+            }
+        }
+
+        // Texture
+        const texture = c.textureProfile;
+        if (texture.stance.length > 0 || texture.move.length > 0) {
+            const textureRow = card.createDiv({ cls: 'jp-surfer-discourse-texture-row' });
+            for (const s of texture.stance.slice(0, 3)) {
+                textureRow.createSpan({ cls: 'jp-surfer-discourse-stance-badge', text: s });
+            }
+            for (const m of texture.move.slice(0, 3)) {
+                textureRow.createSpan({ cls: 'jp-surfer-discourse-move-badge', text: m });
+            }
+            textureRow.createSpan({
+                cls: `jp-surfer-discourse-register-badge jp-surfer-discourse-reg-${texture.registerLevel}`,
+                text: { formal: '敬体', neutral: '普通', casual: '口語', rough: '荒語' }[texture.registerLevel],
+            });
+        }
+
+        // Chunk text preview
+        if (entry) {
+            const preview = entry.text.length > 80 ? entry.text.slice(0, 80) + '…' : entry.text;
+            card.createEl('p', { cls: 'jp-surfer-discourse-const-text', text: preview });
+            card.createSpan({ cls: 'jp-surfer-discourse-const-source', text: basename(entry.sourceFile) });
+        }
+    }
+
+    // ─── Co-operation Pattern Browser ────────────────────────────────────────
+
+    private renderCoopBrowser(parent: HTMLElement): void {
+        const index = this.plugin.discourseIndex;
+        if (!index) {
+            parent.createEl('p', { cls: 'jp-surfer-discourse-hint', text: '索引が読み込まれていません。' });
+            return;
+        }
+
+        const allMatches = index.getCoopMatches();
+        const grouped = groupMatchesByTemplate(allMatches);
+
+        // Template filter
+        const filterRow = parent.createDiv({ cls: 'jp-surfer-discourse-filter-row' });
+        const sel = filterRow.createEl('select', { cls: 'jp-surfer-discourse-filter-select' }) as HTMLSelectElement;
+        sel.createEl('option', { value: '', text: '全テンプレート' });
+        for (const tmpl of COOPERATION_TEMPLATES) {
+            const count = grouped.get(tmpl.name)?.length ?? 0;
+            const opt = sel.createEl('option', { value: tmpl.name, text: `${tmpl.nameJp} (${count})` });
+            if (this.coopFilterTemplate === tmpl.name) opt.selected = true;
+        }
+        sel.addEventListener('change', () => {
+            this.coopFilterTemplate = sel.value;
+            this.render();
+        });
+
+        if (allMatches.length === 0) {
+            parent.createEl('p', {
+                cls: 'jp-surfer-discourse-hint',
+                text: 'チャンクを保存すると協働パターンが検出されます。',
+            });
+            return;
+        }
+
+        const templatesToShow = this.coopFilterTemplate
+            ? COOPERATION_TEMPLATES.filter(t => t.name === this.coopFilterTemplate)
+            : COOPERATION_TEMPLATES;
+
+        for (const tmpl of templatesToShow) {
+            const matches = grouped.get(tmpl.name) ?? [];
+            if (matches.length === 0) continue;
+
+            const section = parent.createDiv({ cls: 'jp-surfer-discourse-coop-section' });
+            const sectionHeader = section.createDiv({ cls: 'jp-surfer-discourse-coop-header' });
+            sectionHeader.createEl('h4', {
+                text: `${tmpl.nameJp}`,
+                cls: 'jp-surfer-discourse-panel-title',
+            });
+            sectionHeader.createSpan({ cls: 'jp-surfer-discourse-coop-count', text: `${matches.length}件` });
+            section.createEl('p', { text: tmpl.description, cls: 'jp-surfer-discourse-coop-desc' });
+
+            for (const match of matches.slice(0, 10)) {
+                this.renderCoopMatchCard(section, match, tmpl);
+            }
+        }
+    }
+
+    private renderCoopMatchCard(
+        parent: HTMLElement,
+        match: CoOperationMatch,
+        tmpl: CoOperationTemplate,
+    ): void {
+        const card = parent.createDiv({ cls: 'jp-surfer-discourse-coop-card' });
+
+        // Filled slots row
+        const slotRow = card.createDiv({ cls: 'jp-surfer-discourse-slot-row' });
+        let first = true;
+        for (const fs of match.filledSlots) {
+            if (!first) slotRow.createSpan({ cls: 'jp-surfer-discourse-slot-arrow', text: '→' });
+            slotRow.createSpan({
+                cls: `jp-surfer-discourse-slot-badge jp-surfer-discourse-slot-${fs.slot.position}`,
+                text: fs.matchedSurface,
+                attr: { title: `${fs.slot.position}: ${fs.matchedStem}` },
+            });
+            first = false;
+        }
+
+        // Chunk text
+        const preview = match.chunkText.length > 100 ? match.chunkText.slice(0, 100) + '…' : match.chunkText;
+        card.createEl('p', { cls: 'jp-surfer-discourse-coop-text', text: preview });
+        if (match.scraped) {
+            card.createSpan({ cls: 'jp-surfer-discourse-scraped-badge', text: '自動' });
+        }
+        card.createSpan({ cls: 'jp-surfer-discourse-coop-source', text: basename(match.sourceFile) });
+    }
+
+    // ─── KWIC Occurrence View ─────────────────────────────────────────────────
+
+    private renderKwicView(parent: HTMLElement): void {
+        const index = this.plugin.discourseIndex;
+        const occIndex = index?.occurrenceIndex;
+
+        // Search bar
+        const searchRow = parent.createDiv({ cls: 'jp-surfer-discourse-kwic-search' });
+        const searchInput = searchRow.createEl('input', {
+            cls: 'jp-surfer-discourse-kwic-input',
+            attr: {
+                type: 'text',
+                placeholder: '変形・文法素・テキスト検索...',
+                value: this.kwicQuery,
+            },
+        }) as HTMLInputElement;
+        searchInput.addEventListener('input', () => {
+            this.kwicQuery = searchInput.value;
+            renderResults();
+        });
+
+        // Sort options
+        const sortSel = searchRow.createEl('select', { cls: 'jp-surfer-discourse-filter-select' }) as HTMLSelectElement;
+        let sortMode: 'date' | 'left' | 'right' = 'date';
+        sortSel.createEl('option', { value: 'date', text: '日付順' });
+        sortSel.createEl('option', { value: 'left', text: '左文脈順' });
+        sortSel.createEl('option', { value: 'right', text: '右文脈順' });
+        sortSel.addEventListener('change', () => {
+            sortMode = sortSel.value as typeof sortMode;
+            renderResults();
+        });
+
+        const resultsContainer = parent.createDiv({ cls: 'jp-surfer-discourse-kwic-results' });
+
+        const renderResults = () => {
+            resultsContainer.empty();
+            if (!occIndex) {
+                resultsContainer.createEl('p', {
+                    cls: 'jp-surfer-discourse-hint',
+                    text: '索引が読み込まれていません。',
+                });
+                return;
+            }
+
+            let occs = this.kwicQuery
+                ? occIndex.kwic(this.kwicQuery)
+                : occIndex.getAll();
+
+            // Sort
+            if (sortMode === 'left') {
+                occs = [...occs].sort((a, b) => a.leftContext.localeCompare(b.leftContext));
+            } else if (sortMode === 'right') {
+                occs = [...occs].sort((a, b) => a.rightContext.localeCompare(b.rightContext));
+            } else {
+                occs = [...occs].sort((a, b) => b.capturedAt - a.capturedAt);
+            }
+
+            if (occs.length === 0) {
+                resultsContainer.createEl('p', {
+                    cls: 'jp-surfer-discourse-hint',
+                    text: this.kwicQuery ? '結果なし' : 'チャンクを保存すると用例が表示されます。',
+                });
+                return;
+            }
+
+            resultsContainer.createEl('p', {
+                cls: 'jp-surfer-discourse-count',
+                text: `${occs.length}件`,
+            });
+
+            for (const occ of occs.slice(0, 60)) {
+                this.renderKwicRow(resultsContainer, occ);
+            }
+        };
+
+        renderResults();
+    }
+
+    private renderKwicRow(parent: HTMLElement, occ: GrammarBitOccurrence): void {
+        const row = parent.createDiv({ cls: 'jp-surfer-discourse-kwic-row' });
+
+        // Left context
+        row.createSpan({ cls: 'jp-surfer-discourse-kwic-left', text: occ.leftContext });
+
+        // Keyword (surface form highlighted)
+        row.createSpan({ cls: 'jp-surfer-discourse-kwic-keyword', text: occ.surfaceForm });
+
+        // Right context
+        row.createSpan({ cls: 'jp-surfer-discourse-kwic-right', text: occ.rightContext });
+
+        // Meta row
+        const meta = row.createDiv({ cls: 'jp-surfer-discourse-kwic-meta' });
+        meta.createSpan({ cls: 'jp-surfer-discourse-kwic-stem', text: occ.stemFamily });
+        meta.createSpan({ cls: 'jp-surfer-discourse-kwic-source', text: occ.sourceTitle });
+        if (occ.timestamp) {
+            meta.createSpan({ cls: 'jp-surfer-discourse-kwic-time', text: occ.timestamp });
+        }
+        if (occ.scraped) {
+            meta.createSpan({ cls: 'jp-surfer-discourse-scraped-badge', text: '自動' });
+        }
+
+        // Co-occurring bits
+        if (occ.coOccurringBits.length > 0) {
+            const coRow = row.createDiv({ cls: 'jp-surfer-discourse-kwic-cobits' });
+            for (const stem of occ.coOccurringBits.slice(0, 4)) {
+                const badge = coRow.createSpan({
+                    cls: 'jp-surfer-discourse-kwic-cobit',
+                    text: stem,
+                });
+                badge.addEventListener('click', () => {
+                    this.currentTab = 'variation';
+                    this.variationSelectedStem = stem;
+                    this.variationSelectedSurface = '';
+                    this.render();
+                });
+            }
+        }
+    }
+
+    // ─── Occurrence card ──────────────────────────────────────────────────────
+
+    private renderOccurrenceCard(parent: HTMLElement, occ: GrammarBitOccurrence): void {
+        const card = parent.createDiv({ cls: 'jp-surfer-discourse-occ-card' });
+
+        // KWIC-style display
+        const kwicRow = card.createDiv({ cls: 'jp-surfer-discourse-kwic-row' });
+        kwicRow.createSpan({ cls: 'jp-surfer-discourse-kwic-left',    text: occ.leftContext });
+        kwicRow.createSpan({ cls: 'jp-surfer-discourse-kwic-keyword', text: occ.surfaceForm });
+        kwicRow.createSpan({ cls: 'jp-surfer-discourse-kwic-right',   text: occ.rightContext });
+
+        // Source and co-occurring bits
+        const meta = card.createDiv({ cls: 'jp-surfer-discourse-occ-meta' });
+        meta.createSpan({ cls: 'jp-surfer-discourse-occ-source', text: occ.sourceTitle });
+        if (occ.timestamp) {
+            meta.createSpan({ cls: 'jp-surfer-discourse-occ-time', text: occ.timestamp });
+        }
+        if (occ.scraped) {
+            meta.createSpan({ cls: 'jp-surfer-discourse-scraped-badge', text: '自動' });
+        }
+
+        if (occ.coOccurringBits.length > 0) {
+            const coRow = card.createDiv({ cls: 'jp-surfer-discourse-occ-cobits' });
+            for (const stem of occ.coOccurringBits.slice(0, 4)) {
+                coRow.createSpan({ cls: 'jp-surfer-discourse-occ-cobit', text: stem });
+            }
+        }
     }
 }

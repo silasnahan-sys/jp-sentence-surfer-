@@ -17,6 +17,7 @@ import { DiscourseView, DISCOURSE_VIEW_TYPE } from './ui/DiscourseView';
 import { DictLookupModal } from './ui/DictLookupView';
 import { DiscourseIndex } from './discourse/discourse-index';
 import { DictEngine } from './dictionary/dict-engine';
+import { ScrapeEngine } from './discourse/scrape-engine';
 import { parseAtGranularity, findUnitAt } from './discourse/discourse-parser';
 import { JP_COLLOCATIONS_PLUGIN_ID } from './constants';
 
@@ -26,6 +27,7 @@ export default class JpSentenceSurferPlugin extends Plugin {
     private highlighter: SentenceHighlighter;
     discourseIndex: DiscourseIndex | null = null;
     dictEngine: DictEngine | null = null;
+    scrapeEngine: ScrapeEngine | null = null;
 
     async onload(): Promise<void> {
         await this.loadSettings();
@@ -38,6 +40,14 @@ export default class JpSentenceSurferPlugin extends Plugin {
 
         // Initialize dictionary engine
         this.dictEngine = new DictEngine(this.app);
+
+        // Initialize scrape engine
+        this.scrapeEngine = new ScrapeEngine(
+            this.app,
+            this.settings.scrapeIndexPath,
+            this.settings.scrapeFolderPath,
+            this.settings.scrapeBatchSize,
+        );
 
         this.addSettingTab(new JpSentenceSurferSettingTab(this.app, this));
 
@@ -311,6 +321,45 @@ export default class JpSentenceSurferPlugin extends Plugin {
             },
         });
 
+        // ── Scrape engine commands ─────────────────────────────────────────────
+
+        this.addCommand({
+            id: 'discourse-scrape-vault',
+            name: '談話: Vault全体をスクレープ',
+            callback: async () => {
+                if (!this.settings.enableScrapeIndex) {
+                    new Notice('スクレープ索引が無効です。設定から有効にしてください。');
+                    return;
+                }
+                if (!this.scrapeEngine) return;
+                new Notice('スクレープを開始します...');
+                this.scrapeEngine.setProgressCallback((scanned, total) => {
+                    // Progress updates are silent to avoid spamming notices
+                });
+                const result = await this.scrapeEngine.runFullScrape();
+                new Notice(
+                    `スクレープ完了: ${result.filesScanned}ファイル, ` +
+                    `${result.occurrencesFound}用例, ` +
+                    `${result.constellationsBuilt}共起パターン, ` +
+                    `${result.templateMatchesFound}協働パターン`
+                );
+                // Refresh discourse view
+                const leaves = this.app.workspace.getLeavesOfType(DISCOURSE_VIEW_TYPE);
+                for (const leaf of leaves) {
+                    (leaf.view as DiscourseView).refresh();
+                }
+            },
+        });
+
+        this.addCommand({
+            id: 'discourse-scrape-abort',
+            name: '談話: スクレープを中止',
+            callback: () => {
+                this.scrapeEngine?.abort();
+                new Notice('スクレープを中止しました。');
+            },
+        });
+
         // Mount toolbar and start highlighter after workspace is ready
         this.app.workspace.onLayoutReady(async () => {
             this.toolbar.mount();
@@ -324,6 +373,17 @@ export default class JpSentenceSurferPlugin extends Plugin {
             // Auto-load dictionaries if enabled
             if (this.settings.enableDictLookup && this.settings.dictionaryFolder) {
                 this.loadDictionaries().catch(console.warn);
+            }
+
+            // Auto-scrape on file save
+            if (this.settings.enableScrapeIndex && this.settings.autoScrapeOnSave) {
+                this.registerEvent(
+                    this.app.vault.on('modify', (file) => {
+                        if (file.path.endsWith('.md') && this.scrapeEngine) {
+                            this.scrapeEngine.scrapeFilePath(file.path).catch(console.warn);
+                        }
+                    })
+                );
             }
         });
     }
