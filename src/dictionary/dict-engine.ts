@@ -148,8 +148,15 @@ export class DictEngine {
         const results: DictSearchResult[] = [];
         const seen = new Set<string>();
 
+        // Cap inner loop at longest known term length to avoid runaway O(n²×m).
+        const maxTermLen = this.entries.reduce(
+            (max, e) => Math.max(max, e.term.length, e.reading.length),
+            0
+        );
+        if (maxTermLen === 0) return results;
+
         for (let start = 0; start < text.length; start++) {
-            for (let end = start + 1; end <= text.length; end++) {
+            for (let end = start + 1; end <= Math.min(text.length, start + maxTermLen); end++) {
                 const sub = text.slice(start, end);
                 for (const entry of this.entries) {
                     if (entry.term === sub || entry.reading === sub) {

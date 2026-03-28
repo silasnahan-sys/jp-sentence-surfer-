@@ -113,7 +113,9 @@ export function createChunkEntry(params: {
     ytUrl?: string;
     collocations?: string[];
 }): DiscourseChunkEntry {
-    const id = `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+    const id = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+        ? crypto.randomUUID()
+        : `${Date.now()}-${Math.random().toString(36).slice(2, 9)}-${Math.random().toString(36).slice(2, 9)}`;
     const cleanText = params.text.trim();
 
     const detected = detectDiscoursePatterns(params.text);
