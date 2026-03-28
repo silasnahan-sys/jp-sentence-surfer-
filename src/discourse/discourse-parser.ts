@@ -162,7 +162,7 @@ function parseUtterances(text: string): DiscourseUnit[] {
 function parseTurns(text: string): DiscourseUnit[] {
     const units: DiscourseUnit[] = [];
     // Split on double newlines or speaker labels
-    const speakerLabelRe = /^(?:[A-Za-zぁ-ん一-龯\w]+[:：]\s*)/m;
+    const speakerLabelRe = /^(?:[\w\u3041-\u3096\u4E00-\u9FFF]+[:：]\s*)/m;
     const paragraphs = text.split(/\n{2,}/);
 
     let pos = 0;

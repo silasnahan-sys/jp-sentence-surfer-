@@ -479,5 +479,5 @@ function sanitizeFilename(str: string): string {
 }
 
 function escapeYaml(str: string): string {
-    return str.replace(/"/g, '\\"');
+    return str.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
 }
