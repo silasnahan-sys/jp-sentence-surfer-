@@ -33,7 +33,7 @@ export default class JpSentenceSurferPlugin extends Plugin {
         this.discourseIndex = new DiscourseIndex();
         this.dictEngine = new DictEngine();
 
-        // Load persisted discourse index
+        // Load persisted discourse index (data was loaded in loadSettings)
         const saved = await this.loadData();
         if (saved?.discourseIndex) {
             this.discourseIndex.fromJSON(saved.discourseIndex);
@@ -240,23 +240,20 @@ export default class JpSentenceSurferPlugin extends Plugin {
     }
 
     async loadSettings(): Promise<void> {
-        const data = await this.loadData();
-        this.settings = Object.assign({}, DEFAULT_SETTINGS, data);
-        // Deep-merge nested settings objects so new keys are not lost
-        this.settings.discourse = Object.assign({}, DEFAULT_SETTINGS.discourse, data?.discourse);
-        this.settings.dict = Object.assign({}, DEFAULT_SETTINGS.dict, data?.dict);
+        const saved = await this.loadData() ?? {};
+        this.settings = {
+            ...DEFAULT_SETTINGS,
+            ...saved,
+            discourse: { ...DEFAULT_SETTINGS.discourse, ...(saved.discourse ?? {}) },
+            dict: { ...DEFAULT_SETTINGS.dict, ...(saved.dict ?? {}) },
+        };
     }
 
     async saveSettings(): Promise<void> {
-        const data = await this.loadData() ?? {};
-        data.discourse = this.settings.discourse;
-        data.dict = this.settings.dict;
-        data.discourseIndex = this.discourseIndex?.toJSON();
-        // Persist all settings fields
-        const out = Object.assign({}, this.settings, {
-            discourseIndex: data.discourseIndex,
+        await this.saveData({
+            ...this.settings,
+            discourseIndex: this.discourseIndex?.toJSON(),
         });
-        await this.saveData(out);
     }
 
     /** Re-mount toolbar after settings change */

@@ -143,14 +143,18 @@ function parseUtterances(text: string): ParsedUnit[] {
 function parseTurns(text: string): ParsedUnit[] {
     const paragraphs = text.split(/\n{2,}/);
     const units: ParsedUnit[] = [];
-    let offset = 0;
+    let searchFrom = 0;
     for (const para of paragraphs) {
         const t = para.trim();
         if (t) {
-            const start = text.indexOf(para, offset);
-            units.push(makeUnit(5, t, start, start + para.length));
+            const start = text.indexOf(para, searchFrom);
+            if (start !== -1) {
+                units.push(makeUnit(5, t, start, start + para.length));
+                searchFrom = start + para.length;
+            }
+        } else {
+            searchFrom += para.length;
         }
-        offset += para.length + 2; // account for the \n\n separator
     }
     return units;
 }

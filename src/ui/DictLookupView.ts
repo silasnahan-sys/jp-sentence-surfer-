@@ -1,5 +1,5 @@
 import { Modal, App, Notice } from 'obsidian';
-import { DictEngine, SearchResult } from '../dictionary/dict-engine';
+import { DictEngine, SearchResult, DictEntry } from '../dictionary/dict-engine';
 import JpSentenceSurferPlugin from '../main';
 import { JP_COLLOCATIONS_PLUGIN_ID } from '../constants';
 
@@ -197,7 +197,7 @@ export class DictLookupModal extends Modal {
         });
     }
 
-    private saveAsCollocation(entry: any): void {
+    private saveAsCollocation(entry: DictEntry): void {
         const plugins = (this.app as any).plugins?.plugins;
         const collPlugin = plugins?.[JP_COLLOCATIONS_PLUGIN_ID];
         if (collPlugin && typeof collPlugin.addEntryFromSurfer === 'function') {
