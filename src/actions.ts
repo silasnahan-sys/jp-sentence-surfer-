@@ -1,5 +1,5 @@
 import { Editor, Notice } from 'obsidian';
-import { JpSentenceSurferSettings } from './types';
+import { JpSentenceSurferSettings, SurfMode } from './types';
 import {
     parseBunsetsu,
     findChunkAt,
@@ -11,6 +11,8 @@ import {
 import { buildClozeText } from './cloze';
 import { segmentYTranscript, isYTranscriptText, cleanYTranscriptText } from './ytranscript';
 import { BOLD_REGEX } from './constants';
+import { SurfAnimator } from './surf-animator';
+import { BoundaryEngine } from './boundary-engine';
 
 /**
  * Get the cursor offset from an editor (as a single number in the full doc).
@@ -28,11 +30,29 @@ function getContent(editor: Editor): string {
 }
 
 /**
- * Move cursor to start of next bunsetsu chunk.
+ * Move cursor to start of next chunk, using the animator for smooth scrolling.
+ * Falls back to instant jump if no animator is provided.
  */
-export function surfNextSentence(editor: Editor, settings: JpSentenceSurferSettings): void {
+export function surfNextSentence(
+    editor: Editor,
+    settings: JpSentenceSurferSettings,
+    animator?: SurfAnimator,
+    boundaryEngine?: BoundaryEngine,
+    mode?: SurfMode
+): void {
     const content = getContent(editor);
     const offset = getCursorOffset(editor);
+    const activeMode = mode ?? SurfMode.Bunsetsu;
+
+    if (animator && boundaryEngine) {
+        // Sync chunk list into animator, then let it drive navigation
+        const chunks = boundaryEngine.getChunks(content, activeMode);
+        animator.setChunks(chunks);
+        animator.surfNext(editor);
+        return;
+    }
+
+    // Fallback: instant jump
     const chunks = parseBunsetsu(content);
     const next = findNextChunk(chunks, offset);
     if (next) {
@@ -43,11 +63,28 @@ export function surfNextSentence(editor: Editor, settings: JpSentenceSurferSetti
 }
 
 /**
- * Move cursor to start of previous bunsetsu chunk.
+ * Move cursor to start of previous chunk, using the animator for smooth scrolling.
+ * Falls back to instant jump if no animator is provided.
  */
-export function surfPrevSentence(editor: Editor, settings: JpSentenceSurferSettings): void {
+export function surfPrevSentence(
+    editor: Editor,
+    settings: JpSentenceSurferSettings,
+    animator?: SurfAnimator,
+    boundaryEngine?: BoundaryEngine,
+    mode?: SurfMode
+): void {
     const content = getContent(editor);
     const offset = getCursorOffset(editor);
+    const activeMode = mode ?? SurfMode.Bunsetsu;
+
+    if (animator && boundaryEngine) {
+        const chunks = boundaryEngine.getChunks(content, activeMode);
+        animator.setChunks(chunks);
+        animator.surfPrev(editor);
+        return;
+    }
+
+    // Fallback: instant jump
     const chunks = parseBunsetsu(content);
     const prev = findPrevChunk(chunks, offset);
     if (prev) {
@@ -58,12 +95,21 @@ export function surfPrevSentence(editor: Editor, settings: JpSentenceSurferSetti
 }
 
 /**
- * Select the current bunsetsu chunk (the one containing the cursor).
+ * Select the current chunk (the one containing the cursor).
  */
-export function surfSelectSentence(editor: Editor, settings: JpSentenceSurferSettings): void {
+export function surfSelectSentence(
+    editor: Editor,
+    settings: JpSentenceSurferSettings,
+    boundaryEngine?: BoundaryEngine,
+    mode?: SurfMode
+): void {
     const content = getContent(editor);
     const offset = getCursorOffset(editor);
-    const chunks = parseBunsetsu(content);
+    const activeMode = mode ?? SurfMode.Bunsetsu;
+
+    const chunks = boundaryEngine
+        ? boundaryEngine.getChunks(content, activeMode)
+        : parseBunsetsu(content);
     const chunk = findChunkAt(chunks, offset);
     if (!chunk) {
         new Notice('No chunk found at cursor.');

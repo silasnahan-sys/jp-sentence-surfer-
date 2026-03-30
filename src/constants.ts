@@ -46,7 +46,63 @@ export const JP_CLOSING_BRACKETS = '」』）)';
  */
 export const JP_COLLOCATIONS_PLUGIN_ID = 'jp-collocations';
 
-// ─── Bunsetsu boundary token sets ────────────────────────────────────────────
+// ─── Surf Physics Constants (NHL-inspired) ────────────────────────────────────
+
+/**
+ * Lerp easing factor — how quickly scroll catches up to target per frame.
+ * 0.14 = smooth, buttery. Higher values = snappier.
+ */
+export const SURF_EASE = 0.14;
+
+/**
+ * Friction multiplier for staggered wave-highlight easing.
+ * Elements further from the focus chunk get progressively slower easing.
+ */
+export const SURF_FRICTION = 0.92;
+
+/**
+ * Momentum decay per frame after last tap.
+ * Higher = sustains momentum longer. Lower = stops faster.
+ */
+export const SURF_MOMENTUM_DECAY = 0.85;
+
+/**
+ * Delta multiplier for touch velocity → scroll momentum translation.
+ * Equivalent to NHL's SCROLL_DELTA_EASE.
+ */
+export const SURF_DELTA_EASE = 0.45;
+
+/**
+ * Minimum velocity threshold below which animation is considered settled.
+ */
+export const SURF_SETTLE_THRESHOLD = 0.5;
+
+/**
+ * Number of neighboring chunks that receive wave-highlight echo effects.
+ */
+export const SURF_WAVE_RADIUS = 3;
+
+/**
+ * Gesture dead zone in degrees — below this angle, treat as horizontal gesture.
+ */
+export const GESTURE_DEAD_ZONE_DEGREES = 30;
+
+/**
+ * Minimum swipe distance (px) to register as a swipe gesture.
+ */
+export const GESTURE_MIN_SWIPE_PX = 40;
+
+/**
+ * Long-press duration threshold in milliseconds.
+ */
+export const GESTURE_LONG_PRESS_MS = 500;
+
+/**
+ * Double-tap maximum interval in milliseconds.
+ */
+export const GESTURE_DOUBLE_TAP_MS = 300;
+
+
 
 /**
  * Tier 1 – Hard-stop punctuation. Always closes the current chunk.

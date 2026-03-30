@@ -1,0 +1,49 @@
+name: Build & Release Plugin
+
+on:
+  push:
+    branches: [main, copilot/add-smooth-scrolling-experience]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build plugin
+        run: npm run build
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: plugin-build
+          path: |
+            main.js
+            manifest.json
+            styles.css
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: build-${{ github.sha }}
+          name: "Auto Build - ${{ github.ref_name }}"
+          body: |
+            Automated build. Download main.js, manifest.json, styles.css below.
+            Put them in .obsidian/plugins/jp-sentence-surfer/ on iOS.
+          files: |
+            main.js
+            manifest.json
+            styles.css
+          draft: false
+          prerelease: true

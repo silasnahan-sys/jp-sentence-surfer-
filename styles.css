@@ -17,6 +17,8 @@
     box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.15);
     /* Safe area for iOS home bar */
     padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+    /* Allow vertical pan but prevent horizontal scroll conflicts */
+    touch-action: pan-y;
 }
 
 .jp-surfer-toolbar[data-position="bottom"] {
@@ -52,6 +54,7 @@
     -webkit-tap-highlight-color: transparent;
     user-select: none;
     touch-action: manipulation;
+    will-change: transform;
 }
 
 .jp-surfer-toolbar-btn:hover {
@@ -69,11 +72,123 @@
     outline-offset: 2px;
 }
 
+/* ─── Mode Badge ────────────────────────────────────────────────── */
+
+.jp-surfer-mode-badge {
+    min-width: 36px;
+    min-height: 36px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    background: var(--interactive-accent);
+    color: var(--text-on-accent);
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    transition: background 0.2s ease, transform 0.1s ease;
+}
+
+.jp-surfer-mode-badge:active {
+    transform: scale(0.92);
+}
+
+/* ─── Haptic Button Pulse ───────────────────────────────────────── */
+
+@keyframes jp-surfer-btn-haptic {
+    0%   { transform: scale(1.0); }
+    35%  { transform: scale(1.12); }
+    65%  { transform: scale(0.96); }
+    100% { transform: scale(1.0); }
+}
+
+.jp-surfer-btn-haptic {
+    animation: jp-surfer-btn-haptic 120ms ease-out forwards;
+    will-change: transform;
+}
+
+/* Respect user motion preferences */
+@media (prefers-reduced-motion: reduce) {
+    .jp-surfer-btn-haptic,
+    .jp-surfer-chunk-arrive,
+    .jp-surfer-chunk-depart,
+    .jp-surfer-selection-glow {
+        animation: none;
+    }
+    .jp-surfer-wave-overlay {
+        transition: none;
+    }
+}
+
+/* ─── Chunk Arrive / Depart Animations ──────────────────────────── */
+
+@keyframes jp-surfer-chunk-arrive {
+    0%   { opacity: 0; transform: translateY(4px) scale(0.98); }
+    60%  { opacity: 1; transform: translateY(-1px) scale(1.005); }
+    100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes jp-surfer-chunk-depart {
+    0%   { opacity: 1; transform: scale(1); }
+    100% { opacity: 0; transform: scale(0.97); }
+}
+
+.jp-surfer-chunk-arrive {
+    animation: jp-surfer-chunk-arrive 220ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    will-change: transform, opacity;
+}
+
+.jp-surfer-chunk-depart {
+    animation: jp-surfer-chunk-depart 300ms ease-out forwards;
+    will-change: transform, opacity;
+}
+
+/* ─── Wave Highlight Overlays ───────────────────────────────────── */
+
+.jp-surfer-wave-overlay {
+    border-radius: 3px;
+    background: var(--jp-surfer-highlight-color, rgba(255, 208, 0, 0.15));
+    transition: opacity 80ms linear;
+    will-change: opacity;
+    pointer-events: none;
+}
+
+.jp-surfer-chunk-wave-1 {
+    opacity: 0.85;
+}
+
+.jp-surfer-chunk-wave-2 {
+    opacity: 0.55;
+}
+
+.jp-surfer-chunk-wave-3 {
+    opacity: 0.28;
+}
+
+/* ─── Selection Glow ────────────────────────────────────────────── */
+
+@keyframes jp-surfer-selection-pulse {
+    0%   { box-shadow: 0 0 0 0 rgba(var(--interactive-accent-rgb, 100, 120, 255), 0.5); }
+    60%  { box-shadow: 0 0 0 6px rgba(var(--interactive-accent-rgb, 100, 120, 255), 0.15); }
+    100% { box-shadow: 0 0 0 0 rgba(var(--interactive-accent-rgb, 100, 120, 255), 0); }
+}
+
+.jp-surfer-selection-glow {
+    animation: jp-surfer-selection-pulse 600ms ease-out forwards;
+    will-change: box-shadow;
+    border-radius: 3px;
+}
+
 /* ─── Sentence Highlight ────────────────────────────────────────── */
 
 .jp-surfer-sentence-highlight {
     background: var(--jp-surfer-highlight-color, rgba(255, 208, 0, 0.15));
     border-radius: 2px;
+    transition: background 200ms ease;
+}
+
+/* Active highlight state on editor container */
+.jp-surfer-highlight-active {
+    /* Subtle glow cue — individual chunk overlay handles the actual tint */
+    outline: none;
 }
 
 /* ─── Settings Tab — Mobile Optimized ──────────────────────────── */
@@ -123,3 +238,4 @@
         right: 24px;
     }
 }
+
