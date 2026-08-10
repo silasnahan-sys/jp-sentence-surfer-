@@ -4,17 +4,19 @@ import {
     BOLD_REGEX,
     YTRANSCRIPT_INLINE_REGEX,
 } from './constants';
-import { ParsedSentence, BoldSegment, BunsetsuChunk } from './types';
+import { ParsedSentence, BoldSegment, BunsetsuChunk, SurfUnit } from './types';
 import { TinySegmenter } from './tiny-segmenter';
 import { groupBunsetsu } from './bunsetsu-grouper';
+
+// Reuse a single TinySegmenter instance across all calls (it has no mutable state)
+const sharedSegmenter = new TinySegmenter();
 
 /**
  * Parse Japanese text into bunsetsu (文節) phrase chunks using TinySegmenter.
  * This is the primary parser used by all surf commands.
  */
 export function parseBunsetsu(text: string): BunsetsuChunk[] {
-    const segmenter = new TinySegmenter();
-    const tokens = segmenter.segment(text);
+    const tokens = sharedSegmenter.segment(text);
     return groupBunsetsu(tokens);
 }
 
@@ -49,7 +51,9 @@ export function findNextChunk(
 }
 
 /**
- * Find the last bunsetsu chunk whose end is at or before `offset`.
+ * Find the last bunsetsu chunk whose start is strictly before `offset`.
+ * If cursor is mid-chunk, returns the start of that chunk (go back to beginning).
+ * If cursor is at start of a chunk, returns the previous chunk.
  */
 export function findPrevChunk(
     chunks: BunsetsuChunk[],
@@ -57,7 +61,7 @@ export function findPrevChunk(
 ): BunsetsuChunk | null {
     let prev: BunsetsuChunk | null = null;
     for (const c of chunks) {
-        if (c.end <= offset) {
+        if (c.start < offset) {
             prev = c;
         }
     }
@@ -84,7 +88,10 @@ export function parseSentences(
         const end = start + raw.length;
         const boldSegments = extractBoldSegments(raw);
         const clean = stripTimestamps(raw);
-        const hasTimestamps = YTRANSCRIPT_INLINE_REGEX.test(raw);
+        // Bug fix: YTRANSCRIPT_INLINE_REGEX has a /g flag; calling .test() on a shared /g
+        // regex advances lastIndex each call, making it alternate true/false in loops.
+        // Use a fresh non-global regex to guarantee correct detection every call.
+        const hasTimestamps = new RegExp(YTRANSCRIPT_INLINE_REGEX.source).test(raw);
 
         sentences.push({
             raw,
@@ -180,12 +187,14 @@ export function stripTimestamps(text: string): string {
  */
 function parseFallback(text: string): ParsedSentence[] {
     const sentences: ParsedSentence[] = [];
-    const lines = text.split(/\n+/);
+    const lines = text.split(/\r?\n+/);
     let offset = 0;
     for (const line of lines) {
+        // Fix S-8: find the actual start of this line at `offset` using cumulative tracking
+        // instead of indexOf which can match the wrong duplicate line
+        const start = text.indexOf(line, offset);
         const trimmed = line.trim();
         if (trimmed) {
-            const start = text.indexOf(line, offset);
             const end = start + line.length;
             const boldSegments = extractBoldSegments(line);
             sentences.push({
@@ -195,10 +204,150 @@ function parseFallback(text: string): ParsedSentence[] {
                 end,
                 hasBold: boldSegments.length > 0,
                 boldSegments,
-                hasTimestamps: YTRANSCRIPT_INLINE_REGEX.test(line),
+                hasTimestamps: new RegExp(YTRANSCRIPT_INLINE_REGEX.source).test(line),
             });
         }
-        offset += line.length + 1; // +1 for newline
+        // Advance offset past this line + the separator that was consumed by split
+        // Use indexOf to find actual position, then advance past it
+        offset = start + line.length;
+        // Skip past the newline(s) that split consumed
+        while (offset < text.length && (text[offset] === '\r' || text[offset] === '\n')) offset++;
     }
     return sentences;
+}
+
+// ═══ Surf Unit Parser (Collocation-level, noise-immune) ══════════════════════
+
+/**
+ * Build a "clean" version of text with noise removed:
+ * - YTranscript timestamps:  [HH:MM:SS](url)
+ * - Annotations:             [笑い] [音楽] [拍手]
+ * - Markdown images:         ![alt](url)
+ * - Bare URLs:               https://...
+ * - Markdown links:          [text](url) → keeps "text"
+ *
+ * Returns the clean text and a position map (clean index → original index).
+ */
+export function buildCleanText(rawText: string): { cleanText: string; map: number[] } {
+    const chars: string[] = [];
+    const map: number[] = [];
+    let i = 0;
+
+    // Detect YTranscript: if ≥2 lines start with [digits:digits](http...),
+    // we normalize newlines → spaces so bunsetsu spans across transcript line breaks.
+    const isTranscript = (rawText.match(/^\[[\d:.,]+\]\(https?:\/\//gm) || []).length >= 2;
+
+    while (i < rawText.length) {
+        // ── Blockquote / callout prefix stripping ──
+        // At start of line, skip `> ` prefixes (including nested `>> `)
+        // and Obsidian callout markers `> [!type]` (strip entire marker)
+        if (i === 0 || (i > 0 && rawText[i - 1] === '\n')) {
+            // Skip leading `> ` prefixes (any nesting depth)
+            while (i < rawText.length && rawText[i] === '>') {
+                i++; // skip >
+                if (i < rawText.length && rawText[i] === ' ') i++; // skip trailing space
+            }
+            // Check for callout marker: [!type] at start of callout line — skip the entire marker
+            // Fix S-10: Handle foldable (+/-) and title text: [!type]+ Title or [!type]- Title
+            if (i + 1 < rawText.length && rawText[i] === '[' && rawText[i + 1] === '!') {
+                const calloutMatch = rawText.substring(i).match(/^\[![^\]]*\][+-]?\s*[^\n]*/);
+                if (calloutMatch) {
+                    i += calloutMatch[0].length;
+                    continue;
+                }
+            }
+            // After stripping `>` prefix, if we're at the same position, fall through to normal processing
+            // (no `>` was found, or we're just past the prefix)
+        }
+
+        if (rawText[i] === '[') {
+            const slice = rawText.substring(i);
+
+            // YTranscript timestamp link: [00:00:01](https://...)
+            const ytMatch = slice.match(/^\[[\d:.,]+\]\(https?:\/\/[^)]*\)\s*/);
+            if (ytMatch) { i += ytMatch[0].length; continue; }
+
+            // JP annotation: [笑い] [音楽] — short bracket with CJK, NOT followed by (
+            // Guard: skip wikilinks [[page]] — check second char isn't also [
+            if (i + 1 < rawText.length && rawText[i + 1] !== '[') {
+                const annoMatch = slice.match(/^\[[^\]\n]{1,20}\](?!\()/);
+                if (annoMatch) {
+                    const inner = annoMatch[0].slice(1, -1);
+                    if (/[\u3000-\u9fff\u4e00-\u9faf]/.test(inner)) {
+                        i += annoMatch[0].length;
+                        while (i < rawText.length && rawText[i] === ' ') i++;
+                        continue;
+                    }
+                }
+            }
+
+            // Markdown link: [text](url) — keep the link text
+            const linkMatch = slice.match(/^\[([^\]\n]*)\]\(([^)\n]+)\)/);
+            if (linkMatch) {
+                const textStart = i + 1; // after [
+                for (let j = 0; j < linkMatch[1].length; j++) {
+                    chars.push(linkMatch[1][j]);
+                    map.push(textStart + j);
+                }
+                i += linkMatch[0].length;
+                continue;
+            }
+        }
+
+        // Markdown image: ![alt](url) — skip entirely
+        if (rawText[i] === '!' && i + 1 < rawText.length && rawText[i + 1] === '[') {
+            const imgMatch = rawText.substring(i).match(/^!\[[^\]\n]*\]\([^)\n]+\)/);
+            if (imgMatch) { i += imgMatch[0].length; continue; }
+        }
+
+        // Bare URL (not inside link markup)
+        if (i + 4 < rawText.length && rawText.substring(i, i + 4) === 'http') {
+            const urlMatch = rawText.substring(i).match(/^https?:\/\/\S+/);
+            if (urlMatch) { i += urlMatch[0].length; continue; }
+        }
+
+        // YTranscript: convert newline → space so bunsetsu can span across line breaks.
+        // This lets the parser see continuous Japanese text instead of chopped lines.
+        if (isTranscript && rawText[i] === '\n') {
+            // Collapse consecutive newlines and trailing/leading whitespace
+            const prevChar = chars.length > 0 ? chars[chars.length - 1] : '';
+            if (prevChar !== ' ' && prevChar !== '') {
+                chars.push(' ');
+                map.push(i);
+            }
+            i++;
+            // Skip any whitespace after the newline
+            while (i < rawText.length && (rawText[i] === ' ' || rawText[i] === '\t')) i++;
+            continue;
+        }
+
+        // Regular character
+        chars.push(rawText[i]);
+        map.push(i);
+        i++;
+    }
+
+    return { cleanText: chars.join(''), map };
+}
+
+/**
+ * Parse text into surfable collocation units (bunsetsu chunks).
+ * Strips timestamps, URLs, markdown links, and annotations before parsing.
+ * Maps offsets back to the original document positions.
+ */
+export function parseSurfUnits(rawText: string): SurfUnit[] {
+    const { cleanText, map } = buildCleanText(rawText);
+    if (cleanText.trim().length === 0) return [];
+
+    const chunks = parseBunsetsu(cleanText);
+
+    return chunks
+        .filter(c => c.text.trim().length > 0)
+        .map(c => {
+            const start = map[c.start] ?? 0;
+            const lastIdx = Math.min(c.end - 1, map.length - 1);
+            const end = lastIdx >= 0 ? (map[lastIdx] ?? 0) + 1 : start;
+            return { text: c.text.trim(), start, end };
+        })
+        .filter(u => u.end > u.start && u.text.length > 0);
 }

@@ -39,6 +39,9 @@ function isWhitespace(token: string): boolean {
     return /^[\s　]+$/.test(token);
 }
 
+/** Opening brackets that trigger a new bunsetsu chunk (Fix S-11). */
+const OPENING_BRACKETS = new Set(['「', '『', '（', '(']);
+
 /** Return true if the token ends with a てる / ている pattern. */
 function isTeiruToken(token: string): boolean {
     if (TEIRU_TOKENS.has(token)) return true;
@@ -118,6 +121,16 @@ export function groupBunsetsu(tokens: string[]): BunsetsuChunk[] {
             continue;
         }
 
+        // ── Opening bracket: flush current chunk, start new one (Fix S-11) ────
+        // In dialogue text like 彼は「ありがとう」, prevents 「 from merging with preceding content
+        if (OPENING_BRACKETS.has(token) || (token.length > 0 && OPENING_BRACKETS.has(token[0]))) {
+            flush(tokenStart);
+            chunkStart = tokenStart;
+            chunkText = token;
+            prevToken = token;
+            continue;
+        }
+
         // ── Add token to current chunk ────────────────────────────────────────
         if (chunkText === '') chunkStart = tokenStart;
         chunkText += token;
@@ -185,6 +198,15 @@ export function groupBunsetsu(tokens: string[]): BunsetsuChunk[] {
             continue;
         }
 
+        // ── Tier 5b: ても / でも (conditional conjunctions) ─────────────────
+        if (token === 'ても' || token === 'でも') {
+            if (!HARD_STOP_TOKENS.has(nextToken)) {
+                flush(pos);
+            }
+            prevToken = token;
+            continue;
+        }
+
         // ── Tier 6: に ────────────────────────────────────────────────────────
         if (token === 'に') {
             // Close before whitespace (nextToken already skips whitespace, so
@@ -199,10 +221,23 @@ export function groupBunsetsu(tokens: string[]): BunsetsuChunk[] {
 
             if (!isCompoundParticle && (beforeWhitespace || formsCompound)) {
                 if (formsCompound) {
-                    // Absorb は/も into this chunk as the compound marker
-                    i++;
-                    pos += tokens[i].length;
-                    chunkText += tokens[i];
+                    // Absorb は/も into this chunk — find the actual token index
+                    // (may be i+1 directly, or after whitespace tokens)
+                    for (let j = i + 1; j < tokens.length; j++) {
+                        if (isWhitespace(tokens[j])) {
+                            // Skip whitespace between に and は/も (include it in chunk)
+                            pos += tokens[j].length;
+                            chunkText += tokens[j];
+                            i = j;
+                            continue;
+                        }
+                        if (tokens[j] === 'は' || tokens[j] === 'も') {
+                            i = j;
+                            pos += tokens[j].length;
+                            chunkText += tokens[j];
+                        }
+                        break;
+                    }
                 }
                 flush(pos);
             }

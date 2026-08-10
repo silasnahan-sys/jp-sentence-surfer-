@@ -3,3 +3,10 @@
 node_modules/
 main.js
 *.js.map
+*.zip
+*.bak
+*.bak2
+*.bak3
+.tmp-test/
+frames/
+video_frames/

@@ -6,7 +6,7 @@
  * Does NOT split on conjunctive commas like が、けど、ので、
  */
 export const JP_SENTENCE_REGEX =
-    /[^。！？!?\n]*[。！？!?][」』）\)]*|[^。！？!?\n]+$/gm;
+    /[^。！？!?\u2026\n]*[。！？!?\u2026][」』）\)]*|[^。！？!?\u2026\n]+$/gm;
 
 /**
  * Regex to detect bold text: **text**
@@ -60,6 +60,10 @@ export const HARD_STOP_TOKENS = new Set(['。', '！', '？', '!', '?']);
  */
 export const ALWAYS_CLOSE_PARTICLES = new Set([
     'を', 'で', 'から', 'って', 'けど', 'けれども', 'ので', 'のに', 'ながら',
+    // Fundamental case/topic particles that close bunsetsu
+    'は', 'が', 'も', 'と', 'へ', 'や',
+    // Compound case particles (TinySegmenter emits as single tokens)
+    'には', 'では', 'とは', 'への', 'もは', 'での',
 ]);
 
 /**
@@ -67,7 +71,8 @@ export const ALWAYS_CLOSE_PARTICLES = new Set([
  */
 export const ALWAYS_CLOSE_PARTICLES_LIST = [
     'けれども', 'ながら', 'から', 'ので', 'のに', 'って', 'けど',
-    'を', 'で',
+    'には', 'では', 'とは', 'への', 'もは', 'での',
+    'を', 'で', 'は', 'が', 'も', 'と', 'へ', 'や',
 ];
 
 /**
@@ -77,6 +82,8 @@ export const ALWAYS_CLOSE_PARTICLES_LIST = [
  */
 export const ALWAYS_CLOSE_VERB_ENDINGS = new Set([
     'た', 'て', 'たら', 'ちゃった', 'った',
+    // Conditional forms
+    'ば', 'なら',
 ]);
 
 /**

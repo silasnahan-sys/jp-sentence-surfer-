@@ -179,7 +179,8 @@ export function surfSegmentYTranscript(editor: Editor): void {
     }
     const segmented = segmentYTranscript(content);
     editor.setValue(segmented);
-    new Notice('YTranscript segmented successfully.');
+    // Remind the user that this operation is reversible (Ctrl/Cmd+Z to undo).
+    new Notice('YTranscript segmented. Undo (Ctrl+Z / Cmd+Z) to revert.');
 }
 
 /**
